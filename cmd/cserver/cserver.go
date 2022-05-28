@@ -23,29 +23,20 @@ import (
 
 var defaultMaxHits = 100
 
-var usageMessage = `usage: cserver [-c] [-f fileregexp] [-h] [-i] [-l] [-n] regexp
+var usageMessage = `usage: cserver [OPTION...]
+Start HTTP server, serving a search and view interface of a source tree.
 
-Csearch behaves like grep over all indexed files, searching for regexp,
-an RE2 (nearly PCRE) regular expression.
+Options:
+  -f FIDX     Path to file index made on SOURCE.*
+  -i IDX      Path to index made by cindex on SOURCE. [CSEARCHINDEX]
+  -p PORT     Port to listen to. [443]
+  -s SOURCE   Path to source directory.*
+  -t TSFILE   Path to timestamp file of the last index update.*
+  -w STATIC   Path to static files to serve (cmd/server/static/).*
+*) Option is required.
 
-The -c, -h, -i, -l, and -n flags are as in grep, although note that as per Go's
-flag parsing convention, they cannot be combined: the option pair -i -n 
-cannot be abbreviated to -in.
-
-The -f flag restricts the search to files whose names match the RE2 regular
-expression fileregexp.
-
-Csearch relies on the existence of an up-to-date index created ahead of time.
-To build or rebuild the index that csearch uses, run:
-
-	cindex path...
-
-where path... is a list of directories or individual files to be included in the index.
-If no index exists, this command creates one.  If an index already exists, cindex
-overwrites it.  Run cindex -help for more.
-
-Csearch uses the index stored in $CSEARCHINDEX or, if that variable is unset or
-empty, $HOME/.csearchindex.
+WARNING: All files and directories below STATIC and SOURCE are accessible from
+the cserver HTTP server.  
 `
 
 func usage() {
@@ -54,7 +45,12 @@ func usage() {
 }
 
 var (
-	pFlag       = flag.String("p", "/home/hakon/private/src/", "remove this prefix from paths")
+	fFlag       = flag.String("f", "", "Path to file index (required)")
+	iFlag       = flag.String("i", "", "Path to index made by cindex on the source tree [CSEARCHINDEX]")
+	pFlag       = flag.Int("p", 443, "Port to listen to [443]")
+	sFlag       = flag.String("s", "", "Path to the source tree (required)")
+	tFlag       = flag.String("t", "", "Path to the timestamp file of the last index update (required)")
+	wFlag       = flag.String("w", "", "Path to static files to serve [cmd/cserver/static/]")
 )
 
 func EscapeChar(char rune) string {
@@ -96,7 +92,7 @@ func EscapeForAttributeValue(text string) string {
 }
 
 func RemovePathPrefix(path string) string {
-	return strings.TrimPrefix(path, *pFlag)
+	return strings.TrimPrefix(path, *sFlag)
 }
 
 func uri_encode(name string, value string) string {
@@ -451,8 +447,7 @@ func SearchFile(writer http.ResponseWriter, request *http.Request,
 		return "Bad regular expression"
 	}
 
-	file_index_name := index.File() + ".files"
-	file, err := os.Open(file_index_name)
+	file, err := os.Open(*fFlag)
 	if err != nil {
 		log.Print(err)
 		return "Failed to open file index"
@@ -639,7 +634,7 @@ func PrintTop(writer http.ResponseWriter, error string, query string,
 
 func PrintBottom(writer http.ResponseWriter, message string) {
 	timestamp := ""
-	data, err := ioutil.ReadFile("/home/hakon/codesearch/index.ts")
+	data, err := ioutil.ReadFile(*tFlag)
 	if (err != nil) {
 		log.Print(err)
 		timestamp = ""
@@ -807,7 +802,7 @@ func ShowFile(writer http.ResponseWriter, request *http.Request,
 		return
 	}
 
-	file, err := os.Open(*pFlag + path)
+	file, err := os.Open(*sFlag + path)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -871,9 +866,48 @@ func main() {
 	flag.Usage = usage
 	flag.Parse()
 
+        if *fFlag == "" {
+		log.Fatal("-f is required, see --help for usage")
+	}
+
+        if *iFlag == "" {
+		env := os.Getenv("CSEARCHINDEX")
+                if env == "" {
+                   log.Fatal("Either -i or the environment variable CSEARCHINDEX must be set")
+                }
+	} else {
+          os.Setenv("CSEARCHINDEX", *iFlag)
+        }
+
+        if *sFlag == "" {
+		log.Fatal("-s is required, see --help for usage")
+	}
+        if (*sFlag)[len(*sFlag)-1:] != "/" {
+           *sFlag += "/"
+        }
+
+        if *tFlag == "" {
+		log.Fatal("-t is required, see --help for usage")
+	}
+
+        if *wFlag == "" {
+		log.Fatal("-w is required, see --help for usage")
+	}
+        sFileInfo, e := os.Stat(*wFlag)
+        if e != nil {
+           log.Fatal("Failed to open '" + *wFlag + "'")
+        }
+        if !sFileInfo.IsDir() {
+           log.Fatal("Not a directory: " + *wFlag);
+        }
+        sFileInfo, e = os.Stat(*wFlag + "/static")
+        if e != nil || !sFileInfo.IsDir() {
+           log.Fatal("Does not look like a path to cmd/cserver/static: " + *wFlag)
+        }
+
 	http.HandleFunc("/", search_handler)
 	http.Handle("/static/", http.FileServer(http.Dir("src/code.google.com/p/codesearch/cmd/cserver/static")))
 	http.HandleFunc("/file/", file_handler)
-	http.ListenAndServe(":4443", nil)
+	http.ListenAndServe(":" + strconv.Itoa(*pFlag), nil)
 	fmt.Println("ListenAndServe returned, exiting process!");
 }

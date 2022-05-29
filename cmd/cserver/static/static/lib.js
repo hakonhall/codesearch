@@ -111,7 +111,8 @@ function open_url(url, new_window) {
     }
 }
 
-function goto_git(org_repo, relative_path, lineno, view, new_window) {
+function goto_git(server, org_repo, relative_path, lineno, view, new_window) {
+    var base_url = baseUrlOf(server);
     var fragment = '';
     if (lineno != null && lineno >= 1) {
         fragment = '#L' + lineno;
@@ -119,12 +120,12 @@ function goto_git(org_repo, relative_path, lineno, view, new_window) {
     if (org_repo.lastIndexOf('vespa-engine/', 0) == 0) {
         var server = 'github.com';
     } else {
-        var server = 'git.vzbuilders.com';
+        var server = 'git.ouryahoo.com';
     }
     if (!view) {
       view = 'blob';
     }
-    var git_url = 'https://' + server + '/' + org_repo +
+    var git_url = base_url + '/' + org_repo +
         '/' + view + '/master/' + relative_path + fragment;
     open_url(git_url, new_window);
 }

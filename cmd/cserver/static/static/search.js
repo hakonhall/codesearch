@@ -152,9 +152,10 @@ function bump_selected_file(sign) {
 
 function GetPath() {
     if (selected_hit >= 0) {
+        var server = SERVERS[selected_hit];
 	var org_repos = ORG_REPOS[selected_hit];
 	var relative_path = RELATIVE_PATHS[selected_hit];
-	return org_repos + "/" + relative_path;
+	return server + "/" + org_repos + "/" + relative_path;
     } else if (SELECTED_FILE >= 0) {
 	var td = get("file-hit-" + SELECTED_FILE);
 	return td.innerHTML;
@@ -180,28 +181,34 @@ function GetFilename() {
 function key_git(view, new_window) {
     var path = GetPath(SELECTED_FILE);
 
-    var separator_index = path.indexOf('/', 0);
-    if (separator_index < 0) {
+    var separator_index1 = path.indexOf('/', 0);
+    if (separator_index1 < 0) {
 	alert("Internal error: path without /: " + path);
 	return;
     }
 
-    separator_index = path.indexOf('/', separator_index + 1);
-    if (separator_index < 0) {
+    var separator_index2 = path.indexOf('/', separator_index1 + 1);
+    if (separator_index2 < 0) {
 	alert("Internal error: path without two /: " + path);
 	return;
     }
 
-    var org_repo = path.substring(0, separator_index);
-    var relative_path = path.substring(separator_index + 1);
+    var separator_index3 = path.indexOf('/', separator_index2 + 1);
+    if (separator_index3 < 0) {
+	alert("Internal error: path without three /: " + path);
+	return;
+    }
 
+    var server = path.substring(0, separator_index1);
+    var org_repo = path.substring(separator_index1 + 1, separator_index3);
+    var relative_path = path.substring(separator_index3 + 1);
     
     var lineno = -1;
     if (selected_hit >= 0) {
 	lineno = LINENOS[selected_hit];
     }
 
-    goto_git(org_repo, relative_path, lineno, view, new_window);
+    goto_git(server, org_repo, relative_path, lineno, view, new_window);
 }
 
 function key_plus() {

@@ -14,7 +14,7 @@ function key_git(view, new_window) {
     if (matched_linenos_index >= 0) {
         lineno = matched_linenos[matched_linenos_index];
     }
-    goto_git(ORG_REPO, RELATIVE_PATH, lineno, view, new_window);
+    goto_git(SERVER, ORG_REPO, RELATIVE_PATH, lineno, view, new_window);
 }
 
 function key_escape() {

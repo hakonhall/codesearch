@@ -29,7 +29,7 @@ Start HTTP server, serving a search and view interface of a source tree.
 Options:
   -f FIDX     Path to file index made on SOURCE.*
   -i IDX      Path to index made by cindex on SOURCE. [CSEARCHINDEX]
-  -p PORT     Port to listen to. [443]
+  -p PORT     Port to listen to. [80]
   -s SOURCE   Path to source directory.*
   -t TSFILE   Path to timestamp file of the last index update.*
   -w STATIC   Path to static files to serve (cmd/server/static/).*
@@ -47,7 +47,7 @@ func usage() {
 var (
 	fFlag       = flag.String("f", "", "Path to file index (required)")
 	iFlag       = flag.String("i", "", "Path to index made by cindex on the source tree [CSEARCHINDEX]")
-	pFlag       = flag.Int("p", 443, "Port to listen to [443]")
+	pFlag       = flag.Int("p", 80, "Port to listen to [80]")
 	sFlag       = flag.String("s", "", "Path to the source tree (required)")
 	tFlag       = flag.String("t", "", "Path to the timestamp file of the last index update (required)")
 	wFlag       = flag.String("w", "", "Path to static files to serve [cmd/cserver/static/]")
@@ -263,14 +263,16 @@ func PrintHit(writer http.ResponseWriter, query string, re *stdregexp.Regexp,
 	}
 
         slices := strings.Split(short_path, "/")
-        org_repo := strings.Join(slices[:2], "/")
-        relative_path := strings.Join(slices[2:], "/")
+        server := strings.Join(slices[:1], "/")
+        org_repo := strings.Join(slices[1:3], "/")
+        relative_path := strings.Join(slices[3:], "/")
 
 	fmt.Fprintf(writer, `
 <tr class="hit %s">
   <td id="location-%d" class="location">%s</td>
   <td id="line-hit-%d" class="%s"><pre class="hit prettyprint">%s</pre></td>
   <script type="text/javascript">
+    SERVERS.push('%s');
     ORG_REPOS.push('%s');
     RELATIVE_PATHS.push('%s');
     LINENOS.push(%d);
@@ -278,7 +280,7 @@ func PrintHit(writer http.ResponseWriter, query string, re *stdregexp.Regexp,
   </script>
 </tr>
 `, line_hit_class, line_index, html_path, line_index, line_hit_class,
-   html_line, org_repo, relative_path, hit.Lineno, file_id)
+   html_line, server, org_repo, relative_path, hit.Lineno, file_id)
 }
 
 func Search(writer http.ResponseWriter, request *http.Request, query string,
@@ -569,6 +571,7 @@ func PrintTop(writer http.ResponseWriter, error string, query string,
 <html>
   <head>
     <script type="text/javascript">
+      var SERVERS = [];
       var ORG_REPOS = [];
       var RELATIVE_PATHS = [];
       var LINENOS = [];
@@ -577,6 +580,7 @@ func PrintTop(writer http.ResponseWriter, error string, query string,
     </script>
     <link rel="stylesheet" type="text/css" href="/static/style.css"/>
     <script type="text/javascript" src="/static/lib.js"></script>
+    <script type="text/javascript" src="/static/map.js"></script>
     <script src="https://cdn.rawgit.com/google/code-prettify/master/loader/run_prettify.js"></script>
     <!-- script type="text/javascript" src="/static/prettify/run_prettify.js"></script -->
     <script type="text/javascript" src="/static/%s"></script>
@@ -647,7 +651,7 @@ func PrintBottom(writer http.ResponseWriter, message string) {
       <tr class="footer">
         <td class="left-footer"><span class="key">?</span><span class="key-description"> toggles help</span></td>
         <td class="center-footer">%s</td>
-        <td class="right-footer"><a href="/file/repos">repositories</a> indexed at %s</td>
+        <td class="right-footer"><a href="/file/manifest">repositories</a> indexed at %s</td>
       </tr>
     </table>
   </body>
@@ -706,21 +710,23 @@ type MatchedLines struct {
 }
 
 func PrintFileHeader(writer http.ResponseWriter, path string) {
-	if path == "repos" {
+	if path == "manifest" {
 		fmt.Fprintf(writer, `<pre id="repos" class="repos">
 `)
 	} else {
 	        slices := strings.Split(path, "/")
-	        org_repo := strings.Join(slices[:2], "/")
-	        relative_path := strings.Join(slices[2:], "/")
+                server := slices[0]
+	        org_repo := strings.Join(slices[1:3], "/")
+	        relative_path := strings.Join(slices[3:], "/")
 		fmt.Fprintf(writer, `
 <script type="text/javascript">
+  var SERVER = '%s';
   var ORG_REPO = '%s';
   var RELATIVE_PATH = '%s';
 </script>
 <span class="path">%s</span>
 <pre id="file-pre" class="prettyprint linenums">`,
-        org_repo, relative_path, path)
+        server, org_repo, relative_path, path)
 	}
 }
 
@@ -906,7 +912,7 @@ func main() {
         }
 
 	http.HandleFunc("/", search_handler)
-	http.Handle("/static/", http.FileServer(http.Dir("src/code.google.com/p/codesearch/cmd/cserver/static")))
+	http.Handle("/static/", http.FileServer(http.Dir(*wFlag)))
 	http.HandleFunc("/file/", file_handler)
 	http.ListenAndServe(":" + strconv.Itoa(*pFlag), nil)
 	fmt.Println("ListenAndServe returned, exiting process!");

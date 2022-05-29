@@ -6,9 +6,10 @@ function file_hit_id(index) { return "file-hit-" + index; }
 function key_git(view, new_window) {
     if (!any_hits()) return;
 
+    var server = SERVERS[selected_hit];
     var org_repo = ORG_REPOS[selected_hit];
     var relative_path = RELATIVE_PATHS[selected_hit];
-    goto_git(org_repo, relative_path, null, view, new_window);
+    goto_git(server, org_repo, relative_path, null, view, new_window);
 }
 
 function key_b() {

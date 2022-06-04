@@ -4,12 +4,10 @@ function file_hit_header_id(index) { return "file-hit-header-" + index; }
 function file_hit_id(index) { return "file-hit-" + index; }
 
 function key_git(view, new_window) {
-    if (!any_hits()) return;
+    if (num_hits == 0) return;
 
-    var server = SERVERS[selected_hit];
-    var org_repo = ORG_REPOS[selected_hit];
-    var relative_path = RELATIVE_PATHS[selected_hit];
-    goto_git(server, org_repo, relative_path, null, view, new_window);
+    var file = FILES[selected_hit];
+    goto_git(file.url(), file.branch(), file.relpath(), null, view, new_window);
 }
 
 function key_b() {
@@ -37,7 +35,7 @@ function key_H() {
 }
 
 function key_n() {
-    if (!any_hits()) return;
+    if (num_hits == 0) return;
 
     if (selected_hit + 1 >= num_hits) {
 	return;
@@ -50,7 +48,7 @@ function key_n() {
 }
 
 function key_p() {
-    if (!any_hits()) return;
+    if (num_hits == 0) return;
 
     if (selected_hit <= 0) {
 	return;
@@ -63,7 +61,7 @@ function key_p() {
 }
 
 function key_o() {
-    if (!any_hits()) return;
+    if (num_hits == 0) return;
 
     var a = get(file_hit_id(selected_hit));
     if (!a) {
@@ -74,7 +72,7 @@ function key_o() {
 }
 
 function key_O() {
-    if (!any_hits()) return;
+    if (num_hits == 0) return;
 
     var a = get(file_hit_id(selected_hit));
     if (!a) {
@@ -86,7 +84,7 @@ function key_O() {
 }
 
 function key_escape() {
-    if (any_hits()) {
+    if (num_hits > 0) {
 	var hit_link = get(file_hit_id(selected_hit));
 	if (hit_link) {
 	    hit_link.focus();
@@ -154,7 +152,7 @@ function main() {
 	focus("q");
     }
 
-    if (!any_hits()) {
+    if (num_hits == 0) {
 	    get("help").style.display = "block";
     }
 }

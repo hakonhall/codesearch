@@ -114,7 +114,7 @@ function bump_selected_hit(sign) {
 
 	select_hit();
     } else {
-	alert('bump_selected_hit: Neither hit nor file has been selected');
+        // No search has been made yet - ignore
     }
 }
 
@@ -150,65 +150,40 @@ function bump_selected_file(sign) {
     }
 }
 
-function GetPath() {
+function GetFile() {
     if (selected_hit >= 0) {
-        var server = SERVERS[selected_hit];
-	var org_repos = ORG_REPOS[selected_hit];
-	var relative_path = RELATIVE_PATHS[selected_hit];
-	return server + "/" + org_repos + "/" + relative_path;
+        return FILES[FILE_FROM_HIT[selected_hit]];
     } else if (SELECTED_FILE >= 0) {
-	var td = get("file-hit-" + SELECTED_FILE);
-	return td.innerHTML;
+        return FILES[SELECTED_FILE];
     } else {
-	alert("Internal error: GetPath called with not selection");
+	alert("Internal error: GetFile called with not selection");
     }
 }
 
 function GetDirectory() {
-    var path = GetPath();
+    var path = GetFile().relpath();
     var slash_index = path.lastIndexOf("/");
     var directory = path.substring(0, slash_index);
     return directory;
 }
 
 function GetFilename() {
-    var location = GetPath();
+    var location = GetFile().relpath();
     var slash_index = location.lastIndexOf("/");
     var filename = location.substring(slash_index + 1);
     return filename;
 }
 
 function key_git(view, new_window) {
-    var path = GetPath(SELECTED_FILE);
+    var file = GetFile();
 
-    var separator_index1 = path.indexOf('/', 0);
-    if (separator_index1 < 0) {
-	alert("Internal error: path without /: " + path);
-	return;
-    }
-
-    var separator_index2 = path.indexOf('/', separator_index1 + 1);
-    if (separator_index2 < 0) {
-	alert("Internal error: path without two /: " + path);
-	return;
-    }
-
-    var separator_index3 = path.indexOf('/', separator_index2 + 1);
-    if (separator_index3 < 0) {
-	alert("Internal error: path without three /: " + path);
-	return;
-    }
-
-    var server = path.substring(0, separator_index1);
-    var org_repo = path.substring(separator_index1 + 1, separator_index3);
-    var relative_path = path.substring(separator_index3 + 1);
-    
     var lineno = -1;
     if (selected_hit >= 0) {
 	lineno = LINENOS[selected_hit];
     }
 
-    goto_git(server, org_repo, relative_path, lineno, view, new_window);
+    goto_git(file.url(), file.branch(), file.relpath(), lineno, view,
+            new_window);
 }
 
 function key_plus() {
@@ -259,7 +234,7 @@ function key_o_element() {
 }
 
 function key_escape() {
-    if (any_hits()) {
+    if (num_hits > 0) {
 	var hit_link = get(hit_link_id(selected_hit));
 	if (hit_link) {
 	    hit_link.focus();
@@ -400,7 +375,7 @@ function equal_then_then(keyCode) {
 	}
 	return true;
     case 'p':
-	var path = escape_for_regex(GetPath());
+	var path = escape_for_regex(GetFile().fullpath());
 	switch (second_char) {
 	case 's':
 	    toggle_set_value_of("q", "\\b" + path + "\\b");
@@ -475,7 +450,6 @@ document.onkeypress = function(event) {
 	case 0x4A: key_J(); return false;
 	case 0x4F: key_O(); return false;
 	case 0x62: key_b(); return false;
-	case 0x64: key_d(); return false;
 	case 0x67: key_g(); return false;
 	case 0x68: key_h(); return false;
 	case 0x6A: key_j(); return false;

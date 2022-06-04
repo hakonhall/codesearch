@@ -6,6 +6,7 @@ package main
 
 import (
 	"bufio"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"io/ioutil"
@@ -89,6 +90,26 @@ func EscapeForAttributeValue(text string) string {
 		escaped_text = escaped_text + EscapeCharForAttributeValue(char)
 	}
 	return escaped_text
+}
+
+func JsStringLiteralOrNull(text *string) string {
+	if text == nil {
+		return "null"
+	}
+	return JsStringLiteral(*text)
+}
+
+func JsStringLiteral(text string) string {
+        escaped := EscapeString(text)
+	literal := "'";
+        for _, r := range escaped {
+                if r == '\'' {
+                	literal += "\\'"
+	        } else {
+                	literal += string(r)
+                }
+        }
+        return literal + "'"
 }
 
 func RemovePathPrefix(path string) string {
@@ -194,8 +215,44 @@ func PrintHitFooter(writer http.ResponseWriter,
 	}
 }
 
+func PrintNoHitFooter(writer http.ResponseWriter, hasQuery bool) string {
+	fmt.Fprintf(writer, `
+</table>
+<script type="text/javascript">
+  var num_hits = 0;
+  var selected_hit = 0;
+  var SELECTED_FILE = -1;
+  var NUM_FILES = 0;
+</script>
+`)
+
+	if hasQuery {
+		return fmt.Sprintf("0 matches in 0 files")
+	} else {
+		return ""
+	}
+}
+
+func GetNewFileString(path string) string {
+	resolvedFile := resolvePath(path)
+	jsDir := JsStringLiteral(resolvedFile.Branch.Dir)
+	jsRelpath := JsStringLiteral(resolvedFile.Relpath[1:])
+	jsUrl := JsStringLiteral(resolvedFile.Branch.ResolveServer().Url + "/" +
+		resolvedFile.Branch.Repo)
+	branch := resolvedFile.Branch.Branch
+	if branch == nil {
+		b := "master"
+		branch = &b
+	}
+	jsBranch := JsStringLiteral(*branch)
+	jsNewFile := fmt.Sprintf("new File(%s, %s, %s, %s)",
+		jsDir, jsRelpath, jsUrl, jsBranch)
+	// TODO: escape
+	return jsNewFile
+}
+
 func PrintFileHitHeader(writer http.ResponseWriter,
-	filename string,
+	path string,
 	file_hit_id int,
 	search string,
 	file_filter string,
@@ -205,7 +262,7 @@ func PrintFileHitHeader(writer http.ResponseWriter,
 	ignore_case bool) {
 	query := pretty_print_query3(search, file_filter, exclude_file_filter,
 		max_hits, ignore_case)
-	file_url := fmt.Sprintf("/file/%s?%s", filename, query)
+	file_url := fmt.Sprintf("/file/%s?%s", EscapeForUrlPath(path), query)
 
 	fmt.Fprintf(writer, `
 <tr class="file-hit">
@@ -215,18 +272,20 @@ func PrintFileHitHeader(writer http.ResponseWriter,
         <th id="file-hit-header-%d" class="file-hit-header">
           <a id="file-hit-%d" href="%s">%s</a>
         </th>
-  	<script type="text/javascript">
-  	  HIT_FROM_FILE.push(%d)
-  	</script>
+        <script type="text/javascript">
+          HIT_FROM_FILE.push(%d)
+          FILES.push(%s);
+        </script>
       </tr>
       <tr id="file-hit-body-%d" class="file-hit-body">
         <td class="file-hit-body">
 <table class="hit">
 `, file_hit_id, file_hit_id,
-   EscapeForAttributeValue(file_url),
-   EscapeString(filename),
-   next_hit_id,
-   file_hit_id)
+		EscapeForAttributeValue(file_url),
+		EscapeString(path),
+		next_hit_id,
+		GetNewFileString(path),
+		file_hit_id)
 }
 
 func PrintFileHitFooter(writer http.ResponseWriter) {
@@ -240,15 +299,28 @@ func PrintFileHitFooter(writer http.ResponseWriter) {
 `)
 }
 
+func EscapeForUrlPath(path string) string {
+	escaped := ""
+	for _, r := range path {
+		if r == '#' {
+			escaped += "%23"
+		} else {
+			escaped += string(r)
+		}
+	}
+	return escaped
+}
+
 func PrintHit(writer http.ResponseWriter, query string, re *stdregexp.Regexp,
 	file string, exclude_file string, path string, hit regexp.LineHit,
-	line_index int, max_hits int, file_id int, ignore_case bool) {
-	short_path := RemovePathPrefix(path)
+	line_index int, max_hits int, file_id int, first_hit_for_file bool,
+	ignore_case bool) {
 	uri_query := pretty_print_query(
 		query, file, exclude_file, line_index, hit.Lineno, max_hits,
 			ignore_case)
-	href := fmt.Sprintf("/file/%s?%s#l%d", short_path, uri_query,
-		hit.Lineno - 10);
+	href := fmt.Sprintf("/file/%s?%s#l%d", EscapeForUrlPath(path),
+		uri_query, hit.Lineno - 10);
+	href = EscapeForAttributeValue(href)
 
 	html_path := fmt.Sprintf(`<a id="file-link-%d" href="%s">%d.</a>`,
 		line_index, href, hit.Lineno)
@@ -262,25 +334,17 @@ func PrintHit(writer http.ResponseWriter, query string, re *stdregexp.Regexp,
 		line_hit_class += " odd-line"
 	}
 
-        slices := strings.Split(short_path, "/")
-        server := strings.Join(slices[:1], "/")
-        org_repo := strings.Join(slices[1:3], "/")
-        relative_path := strings.Join(slices[3:], "/")
-
 	fmt.Fprintf(writer, `
 <tr class="hit %s">
   <td id="location-%d" class="location">%s</td>
   <td id="line-hit-%d" class="%s"><pre class="hit prettyprint">%s</pre></td>
   <script type="text/javascript">
-    SERVERS.push('%s');
-    ORG_REPOS.push('%s');
-    RELATIVE_PATHS.push('%s');
     LINENOS.push(%d);
-    FILE_FROM_HIT.push(%d)
+    FILE_FROM_HIT.push(%d);
   </script>
 </tr>
 `, line_hit_class, line_index, html_path, line_index, line_hit_class,
-   html_line, server, org_repo, relative_path, hit.Lineno, file_id)
+		html_line, hit.Lineno, file_id)
 }
 
 func Search(writer http.ResponseWriter, request *http.Request, query string,
@@ -406,16 +470,16 @@ func Search(writer http.ResponseWriter, request *http.Request, query string,
 					max_hits,
 					ignore_case)
 
-				for _, hit := range grep.MatchedLines {
-					//if num_hits >= max_hits {
-					//	truncated_hits = true
-					//	break
-					//}
+				for i, hit := range grep.MatchedLines {
+					if num_hits >= max_hits + 20 {
+						truncated_hits = true
+						break
+					}
 					PrintHit(writer, query, stdre,
 						file_filter,
-						exclude_file_filter, name, hit,
-						num_hits, max_hits,
-						files_matched,
+						exclude_file_filter, short_name,
+						hit, num_hits, max_hits,
+						files_matched, i == 0,
 						ignore_case)
 					num_hits += 1
 				}
@@ -430,10 +494,12 @@ func Search(writer http.ResponseWriter, request *http.Request, query string,
 			return PrintHitFooter(writer, select_hit, num_hits,
 				truncated_hits,
 				files_matched, len(post), direction)
+		} else {
+			return PrintNoHitFooter(writer, true)
 		}
+	} else {
+		return PrintNoHitFooter(writer, true)
 	}
-
-	return ""
 }
 
 func SearchFile(writer http.ResponseWriter, request *http.Request,
@@ -474,7 +540,9 @@ func SearchFile(writer http.ResponseWriter, request *http.Request,
 		full_path := scanner.Text()
 		path := RemovePathPrefix(full_path)
 
-		file_url := fmt.Sprintf("/file/%s?%s", path, query)
+		file_url := fmt.Sprintf("/file/%s?%s",
+			EscapeForUrlPath(path), query)
+		
 		href := EscapeForAttributeValue(file_url)
 
 		formatted_line, matches := escape_and_mark_line(
@@ -488,10 +556,6 @@ func SearchFile(writer http.ResponseWriter, request *http.Request,
 			selected_class = " selected-file"
 		}
 
-		slices := strings.Split(path, "/")
-		org_repo := strings.Join(slices[:2], "/")
-		relative_path := strings.Join(slices[2:], "/")
-
 		fmt.Fprintf(writer, `
 <tr class="file-hit">
   <td class="file-hit">
@@ -503,16 +567,11 @@ func SearchFile(writer http.ResponseWriter, request *http.Request,
       </tr>
     </table>
     <script type="text/javascript">
-      ORG_REPOS.push('%s');
-      RELATIVE_PATHS.push('%s');
+      FILES.push(%s);
     </script>
   </td>
 </tr>
-`, hits, selected_class, hits,
-   href,
-   formatted_line,
-   EscapeForAttributeValue(org_repo),
-   EscapeForAttributeValue(relative_path))
+`, hits, selected_class, hits, href, formatted_line, GetNewFileString(path))
 
 		hits += 1
 	}
@@ -570,20 +629,17 @@ func PrintTop(writer http.ResponseWriter, error string, query string,
 	fmt.Fprintf(writer, `
 <html>
   <head>
-    <script type="text/javascript">
-      var SERVERS = [];
-      var ORG_REPOS = [];
-      var RELATIVE_PATHS = [];
-      var LINENOS = [];
-      var FILE_FROM_HIT = [];
-      var HIT_FROM_FILE = [];
-    </script>
     <link rel="stylesheet" type="text/css" href="/static/style.css"/>
     <script type="text/javascript" src="/static/lib.js"></script>
-    <script type="text/javascript" src="/static/map.js"></script>
     <script src="https://cdn.rawgit.com/google/code-prettify/master/loader/run_prettify.js"></script>
     <!-- script type="text/javascript" src="/static/prettify/run_prettify.js"></script -->
     <script type="text/javascript" src="/static/%s"></script>
+    <script type="text/javascript">
+      var LINENOS = [];
+      var FILE_FROM_HIT = [];
+      var HIT_FROM_FILE = [];
+      var FILES = [];
+    </script>
   </head>
   <body onload="main()">
     %s
@@ -651,7 +707,7 @@ func PrintBottom(writer http.ResponseWriter, message string) {
       <tr class="footer">
         <td class="left-footer"><span class="key">?</span><span class="key-description"> toggles help</span></td>
         <td class="center-footer">%s</td>
-        <td class="right-footer"><a href="/file/manifest">repositories</a> indexed at %s</td>
+        <td class="right-footer"><a href="/static/manifest">repositories</a> indexed at %s</td>
       </tr>
     </table>
   </body>
@@ -699,7 +755,9 @@ func search_handler(w http.ResponseWriter, r *http.Request) {
 			message = Search(w, r, query, file_filter, select_hit,
 				direction, exclude_files, max_hits,
 				ignore_case)
-		}
+		} else {
+			message = PrintNoHitFooter(w, false)
+		}			
 	}
 	PrintBottom(w, message)
 }
@@ -710,24 +768,13 @@ type MatchedLines struct {
 }
 
 func PrintFileHeader(writer http.ResponseWriter, path string) {
-	if path == "manifest" {
-		fmt.Fprintf(writer, `<pre id="repos" class="repos">
-`)
-	} else {
-	        slices := strings.Split(path, "/")
-                server := slices[0]
-	        org_repo := strings.Join(slices[1:3], "/")
-	        relative_path := strings.Join(slices[3:], "/")
-		fmt.Fprintf(writer, `
+	fmt.Fprintf(writer, `
 <script type="text/javascript">
-  var SERVER = '%s';
-  var ORG_REPO = '%s';
-  var RELATIVE_PATH = '%s';
+  var FILE = %s;
 </script>
 <span class="path">%s</span>
 <pre id="file-pre" class="prettyprint linenums">`,
-        server, org_repo, relative_path, path)
-	}
+		GetNewFileString(path), path)
 }
 
 func PrintFileFooter(writer http.ResponseWriter, max_lineno int,
@@ -868,6 +915,90 @@ func file_handler(w http.ResponseWriter, request *http.Request) {
 	PrintBottom(w, "")
 }
 
+type Manifest struct {
+	Servers []Server
+	Branches []Branch
+}
+
+type Server struct {
+	Name string
+	Url string
+}
+
+type Branch struct {
+	Server string
+	Dir string
+	Repo string
+	Branch *string
+}
+
+func (s Branch) ResolveServer() Server {
+	server, ok := SERVERS[s.Server]
+	if ! ok {
+		log.Fatal("Failed to find " + s.Server + " in SERVERS")
+	}
+	return server
+}
+
+type File struct {
+	Branch Branch
+	Relpath string
+}
+
+// Server by server name
+var SERVERS map[string]Server
+
+// Branch by dir
+var BRANCHES map[string]Branch
+
+func readManifest(path string) {
+	manifestFile, e := os.Open(path)
+	if e != nil {
+		log.Fatal("Failed to open " + path)
+	}
+	defer manifestFile.Close()
+	manifestData, e := ioutil.ReadAll(manifestFile)
+	if e != nil {
+		log.Fatal("Failed to read " + path)
+	}
+
+	var manifest Manifest
+	json.Unmarshal(manifestData, &manifest)
+
+	//fmt.Printf("%q\n", manifest)
+	SERVERS = make(map[string]Server)
+	for _, server := range manifest.Servers {
+		SERVERS[server.Name] = server
+	}
+
+	BRANCHES = make(map[string]Branch)
+	for _, branch := range manifest.Branches {
+		BRANCHES["/" + branch.Dir] = branch
+	}
+}
+
+// path must be relative to the serving directory (sFlag).
+func resolvePath(path string) File {
+	prefix := ""
+	suffix := "/" + path
+	for {
+		var offset int = strings.Index(suffix[1:], "/") + 1
+		if offset < 1 {
+			log.Fatal("Failed to find branch for " + path)
+		}
+		var name string = suffix[:offset]
+		if len(name) == 0 {
+			log.Fatal("Found empty component for " + path)
+		}
+		prefix += name
+		suffix = suffix[offset:]
+		branch, ok := BRANCHES[prefix]
+		if ok {
+			return File{Branch: branch, Relpath: suffix}
+		}
+	}
+}
+
 func main() {
 	flag.Usage = usage
 	flag.Parse()
@@ -889,7 +1020,7 @@ func main() {
 		log.Fatal("-s is required, see --help for usage")
 	}
         if (*sFlag)[len(*sFlag)-1:] != "/" {
-           *sFlag += "/"
+		*sFlag += "/"
         }
 
         if *tFlag == "" {
@@ -901,15 +1032,16 @@ func main() {
 	}
         sFileInfo, e := os.Stat(*wFlag)
         if e != nil {
-           log.Fatal("Failed to open '" + *wFlag + "'")
+		log.Fatal("Failed to open '" + *wFlag + "'")
         }
         if !sFileInfo.IsDir() {
-           log.Fatal("Not a directory: " + *wFlag);
+		log.Fatal("Not a directory: " + *wFlag);
         }
         sFileInfo, e = os.Stat(*wFlag + "/static")
         if e != nil || !sFileInfo.IsDir() {
-           log.Fatal("Does not look like a path to cmd/cserver/static: " + *wFlag)
+		log.Fatal("Does not look like a path to cmd/cserver/static: " + *wFlag)
         }
+	readManifest(*wFlag + "/static/manifest.json")
 
 	http.HandleFunc("/", search_handler)
 	http.Handle("/static/", http.FileServer(http.Dir(*wFlag)))

@@ -111,22 +111,19 @@ function open_url(url, new_window) {
     }
 }
 
-function goto_git(server, org_repo, relative_path, lineno, view, new_window) {
-    var base_url = baseUrlOf(server);
+function goto_git(base_url, branch, relative_path, lineno, view, new_window) {
     var fragment = '';
     if (lineno != null && lineno >= 1) {
         fragment = '#L' + lineno;
     }
-    if (org_repo.lastIndexOf('vespa-engine/', 0) == 0) {
-        var server = 'github.com';
-    } else {
-        var server = 'git.ouryahoo.com';
-    }
     if (!view) {
       view = 'blob';
     }
-    var git_url = base_url + '/' + org_repo +
-        '/' + view + '/master/' + relative_path + fragment;
+    if (!branch) {
+        branch = 'master'; // hm, this is wrong. Should pick default name.
+    }
+    var git_url = base_url + '/' + view + '/' + branch + '/' + relative_path
+        + fragment;
     open_url(git_url, new_window);
 }
 
@@ -140,15 +137,6 @@ function some_results() {
     }
 
     return false;
-}
-
-// Deprecated
-function any_hits() {
-    if (typeof num_hits == "undefined") {
-	return false;
-    }
-
-    return num_hits > 0;
 }
 
 function toggle_set_value_of(input_id, value) {
@@ -231,3 +219,35 @@ function generic_onkeypress(event) {
     // process the event.
     return null;
 };
+
+class File {
+    constructor(dir, relpath, url, branch) {
+        this._dir = requireNonNull(dir, "dir");
+        this._relpath = requireNonNull(relpath, "relpath");
+        this._url = requireNonNull(url, "url");
+        this._branch = branch;  // may be null
+    }
+    dir() { return this._dir; }
+    fullpath() { return this._dir + '/' + this._relpath; }
+    relpath() { return this._relpath; }
+    url() { return this._url; }
+    branch() { return this._branch == null ? 'master' : this._branch; }
+}
+
+function requireNonNull(ref, name) {
+    if (ref == null || ref == undefined) {
+        throw name + ' is null';
+    }
+    return ref;
+}
+
+// Send a GET for url synchronously, and return JSON body expecting 200.
+function get_json(url) {
+    var http = new XMLHttpRequest();
+    const async = false;
+    http.open("GET", url, async);
+    http.send();
+    const text = http.responseText;
+    const json = JSON.parse(text);
+    return json;
+}

@@ -24,3 +24,5 @@ MODIFICATIONS ON TOP OF google/codesearch
 
 Updated import paths to refer to hakonhall/codesearch.  Doesn't seem
 to take effect immediately with go get. :shrug:
+
+The updater directory contains code to keep the indices up to date, and defines systemd services for that and the cserver HTTP server.

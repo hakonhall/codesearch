@@ -99,8 +99,12 @@ td.line-hit {
     padding: 0px;
 }
 
-ol li.hit, td.line-selected, th.selected-file {
+ol li.hit, td.line-selected, td.line-hit:hover, th.selected-file {
     background-color: #ffffc0;
+}
+
+td.line-hit:hover {
+    cursor: pointer;
 }
 
 pre.hit {

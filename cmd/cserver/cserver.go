@@ -328,7 +328,7 @@ func PrintHit(writer http.ResponseWriter, query string, re *stdregexp.Regexp,
 	html_path := fmt.Sprintf(`<a id="file-link-%d" href="%s">%d.</a>`,
 		line_index, href, hit.Lineno)
 
-	html_line, _ := escape_and_mark_line(hit.Line, line_index, re, href)
+	html_line, _ := escapeAndMarkLine(hit.Line, line_index, re)
 	
 	line_hit_class := "line-hit"
 	if (line_index + 1) % 2 == 0 {
@@ -340,14 +340,14 @@ func PrintHit(writer http.ResponseWriter, query string, re *stdregexp.Regexp,
 	fmt.Fprintf(writer, `
 <tr class="hit %s">
   <td id="location-%d" class="location">%s</td>
-  <td id="line-hit-%d" class="%s"><pre class="hit prettyprint">%s</pre></td>
+  <td id="line-hit-%d" class="%s" onclick="open_link(get('file-link-%d'), false)"><pre class="hit prettyprint">%s</pre></td>
   <script type="text/javascript">
     LINENOS.push(%d);
     FILE_FROM_HIT.push(%d);
   </script>
 </tr>
 `, line_hit_class, line_index, html_path, line_index, line_hit_class,
-		html_line, hit.Lineno, file_id)
+		line_index, html_line, hit.Lineno, file_id)
 }
 
 func Search(writer http.ResponseWriter, request *http.Request, query string,
@@ -548,8 +548,7 @@ func SearchFile(writer http.ResponseWriter, request *http.Request,
 		
 		href := EscapeForAttributeValue(file_url)
 
-		formatted_line, matches := escape_and_mark_line(
-			path, hits, file_re, "")
+		formatted_line, matches := escapeAndMarkLine(path, hits, file_re)
 		if !matches {
 			continue
 		}
@@ -710,7 +709,7 @@ func PrintBottom(writer http.ResponseWriter, message string) {
       <tr class="footer">
         <td class="left-footer"><span class="key">?</span><span class="key-description"> toggles help</span></td>
         <td class="center-footer">%s</td>
-        <td class="right-footer"><a href="/static/manifest">repositories</a> indexed at %s</td>
+        <td class="right-footer"><a href="/static/manifest.json">repositories</a> indexed at %s</td>
       </tr>
     </table>
   </body>
@@ -806,10 +805,7 @@ func PrintFileFooter(writer http.ResponseWriter, max_lineno int,
 `, max_lineno, matched_linenos_js)
 }
 
-func escape_and_mark_line(line string,
-			  id int,
-			  re *stdregexp.Regexp,
-			  href string) (string, bool) {
+func escapeAndMarkLine(line string, id int, re *stdregexp.Regexp) (string, bool) {
 	if re == nil {
 		return EscapeString(line), false
 	}
@@ -826,20 +822,14 @@ func escape_and_mark_line(line string,
 	matched_text := EscapeString(line[begin_of_match:end_of_match])
 	post_text := EscapeString(line[end_of_match:])
 
-	if href == "" {
-		return fmt.Sprintf(
-			`%s<span id="match-%d" class="matched-text">%s</span>%s`,
-			pre_text, id, matched_text, post_text), true
-	} else {
-		return fmt.Sprintf(
-			`%s<a id="match-%d" class="matched-text" href="%s">%s</a>%s`,
-			pre_text, id, href, matched_text, post_text), true
-	}
+	return fmt.Sprintf(
+		`%s<span id="match-%d" class="matched-text">%s</span>%s`,
+		pre_text, id, matched_text, post_text), true
 }
 
 func PrintFileLine(writer http.ResponseWriter, line string, lineno int,
 	re *stdregexp.Regexp) bool {
-	formatted_line, matches := escape_and_mark_line(line, lineno, re, "javascript: false")
+	formatted_line, matches := escapeAndMarkLine(line, lineno, re)
 	fmt.Fprintf(writer, "%s\n", formatted_line)
 	return matches
 }

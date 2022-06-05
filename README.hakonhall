@@ -26,3 +26,12 @@ Updated import paths to refer to hakonhall/codesearch.  Doesn't seem
 to take effect immediately with go get. :shrug:
 
 The updater directory contains code to keep the indices up to date, and defines systemd services for that and the cserver HTTP server.
+
+github.com/hakonhall/code-prettify is a clone of
+github.com/googlearchive/code-prettify in case the serving of the this project,
+at
+
+<script src="https://cdn.jsdelivr.net/gh/google/code-prettify@master/loader/run_prettify.js"></script>
+
+(see fork), ever stops.  In that case I could make a copy of run_prettify.js and
+the loader subdirectory to cmd/cserver/static/static/.  I have done so before.

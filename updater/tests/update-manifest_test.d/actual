@@ -1,0 +1,39 @@
+found 14 github repos after excluding 1
+manifest updated: 14 repos (+14)
+manifest:
+github hakonhall/codesearch
+github hakonhall/diffuse
+github hakonhall/gh
+github hakonhall/hwmonitor
+github hakonhall/hybridmodules
+github hakonhall/jake
+github hakonhall/java-utils
+github hakonhall/modjar
+github hakonhall/modulec
+github hakonhall/mvndeps
+github hakonhall/re
+github hakonhall/sh
+github hakonhall/triplea
+github openjdk/jdk #master master/jdk#master
+manifest.json:
+{
+  "servers": [
+    {"name": "github", "url": "https://github.com" }
+  ],
+  "branches": [
+    { "server": "github", "dir": "github/hakonhall/codesearch", "repo": "hakonhall/codesearch", "branch": null },
+    { "server": "github", "dir": "github/hakonhall/diffuse", "repo": "hakonhall/diffuse", "branch": null },
+    { "server": "github", "dir": "github/hakonhall/gh", "repo": "hakonhall/gh", "branch": null },
+    { "server": "github", "dir": "github/hakonhall/hwmonitor", "repo": "hakonhall/hwmonitor", "branch": null },
+    { "server": "github", "dir": "github/hakonhall/hybridmodules", "repo": "hakonhall/hybridmodules", "branch": null },
+    { "server": "github", "dir": "github/hakonhall/jake", "repo": "hakonhall/jake", "branch": null },
+    { "server": "github", "dir": "github/hakonhall/java-utils", "repo": "hakonhall/java-utils", "branch": null },
+    { "server": "github", "dir": "github/hakonhall/modjar", "repo": "hakonhall/modjar", "branch": null },
+    { "server": "github", "dir": "github/hakonhall/modulec", "repo": "hakonhall/modulec", "branch": null },
+    { "server": "github", "dir": "github/hakonhall/mvndeps", "repo": "hakonhall/mvndeps", "branch": null },
+    { "server": "github", "dir": "github/hakonhall/re", "repo": "hakonhall/re", "branch": null },
+    { "server": "github", "dir": "github/hakonhall/sh", "repo": "hakonhall/sh", "branch": null },
+    { "server": "github", "dir": "github/hakonhall/triplea", "repo": "hakonhall/triplea", "branch": null },
+    { "server": "github", "dir": "master/jdk#master", "repo": "openjdk/jdk", "branch": "master" }
+  ]
+}

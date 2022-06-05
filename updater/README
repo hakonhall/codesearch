@@ -1,0 +1,23 @@
+# Move and fix content of *.service files.  Below is an example.
+
+systemctl --user link /home/hakon/codesearch/codesearch/updater/codesearch-server.service
+systemctl --user enable codesearch-server.service
+systemctl --user start codesearch-server.service
+
+systemctl --user link /home/hakon/codesearch/codesearch/updater/codesearch-updater.service
+systemctl --user enable codesearch-updater.service
+systemctl --user start codesearch-updater.service
+
+# Change Storage to persistent in /etc/systemd/journald.conf, and
+# reboot. journalctl can then be used to view log of the server and updater:
+
+journalctl --user --user-unit codesearch-server.service
+journalctl --user --user-unit codesearch-updater.service
+
+# User systemd units are started on login (unless already logged in), and ends
+# when the last session exits.  Instead, we'd like server & updater to start on
+# boot, and stay alive until shutdown.
+
+loginctl enable-linger hakon
+loginctl show-user hakon --property Linger
+Linger=yes

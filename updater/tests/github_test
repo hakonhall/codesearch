@@ -1,0 +1,12 @@
+#!/bin/bash
+
+set -e
+
+test -e tests/github_test || exit 2
+
+source config.bash
+source github.bash
+
+ReadConfig tests/test.config
+GetReposOfUser github hakonhall
+declare -p OUTA

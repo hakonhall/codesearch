@@ -1,0 +1,19 @@
+#!/bin/bash
+
+test -r tests/update-manifest_test || exit 3
+
+source update-manifest.bash
+
+# Override Log with timestamp prefix.
+Log() { echo "$*"; }
+
+manifest=tests/update-manifest_test.d/tmp/manifest
+rm -f "$manifest"
+ResolveGitBranches tests/test.config "$manifest"
+json_manifest="$OUT2"
+
+echo "manifest:"
+cat "$manifest"
+
+echo "manifest.json:"
+cat "$json_manifest"

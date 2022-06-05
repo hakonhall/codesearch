@@ -207,8 +207,9 @@ func PrintHitFooter(writer http.ResponseWriter,
    files_matched_shown)
 
 	if truncated {
-		return fmt.Sprintf("%d matches in %d of %d files (result list truncated)",
-			num_hits_shown, files_matched_shown, files_matched)
+		return fmt.Sprintf("%d matches in %d files, but not showing matches in ~%d more files",
+			num_hits_shown, files_matched_shown,
+			files_matched - files_matched_shown)
 	} else {
 		return fmt.Sprintf("%d matches in %d files",
 			num_hits_shown, files_matched_shown)

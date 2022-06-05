@@ -633,8 +633,7 @@ func PrintTop(writer http.ResponseWriter, error string, query string,
   <head>
     <link rel="stylesheet" type="text/css" href="/static/style.css"/>
     <script type="text/javascript" src="/static/lib.js"></script>
-    <script src="https://cdn.rawgit.com/google/code-prettify/master/loader/run_prettify.js"></script>
-    <!-- script type="text/javascript" src="/static/prettify/run_prettify.js"></script -->
+    <script src="https://cdn.jsdelivr.net/gh/google/code-prettify@master/loader/run_prettify.js"></script>
     <script type="text/javascript" src="/static/%s"></script>
     <script type="text/javascript">
       var LINENOS = [];

@@ -234,7 +234,10 @@ func PrintNoHitFooter(writer http.ResponseWriter, hasQuery bool) string {
 }
 
 func GetNewFileString(path string) string {
-	resolvedFile := resolvePath(path)
+	var resolvedFile *File = resolvePath(path)
+	if resolvedFile == nil {
+		return "alert(\"Bad path\")";
+	}
 	jsDir := JsStringLiteral(resolvedFile.Branch.Dir)
 	jsRelpath := JsStringLiteral(resolvedFile.Relpath[1:])
 	jsUrl := JsStringLiteral(resolvedFile.Branch.ResolveServer().Url + "/" +
@@ -800,8 +803,6 @@ func PrintFileFooter(writer http.ResponseWriter, max_lineno int,
   var max_lineno = %d;
   %s
 </script>
-
-<hr class="end-of-results"/>
 `, max_lineno, matched_linenos_js)
 }
 
@@ -857,7 +858,8 @@ func ShowFile(writer http.ResponseWriter, request *http.Request,
 
 	file, err := os.Open(*sFlag + path)
 	if err != nil {
-		log.Fatal(err)
+		log.Print(err)
+		return
 	}
 	defer file.Close()
 
@@ -879,14 +881,14 @@ func ShowFile(writer http.ResponseWriter, request *http.Request,
 	PrintFileFooter(writer, i, matched_lines)
 
 	if err := scanner.Err(); err != nil {
-		log.Fatal(err)
+		log.Print(err)
 	}
 }
 
 func file_handler(w http.ResponseWriter, request *http.Request) {
 	err := request.ParseForm()
 	if err != nil {
-		log.Fatal(err)
+		log.Print(err)
 		return
 	}
 
@@ -935,7 +937,7 @@ type Branch struct {
 func (s Branch) ResolveServer() Server {
 	server, ok := SERVERS[s.Server]
 	if ! ok {
-		log.Fatal("Failed to find " + s.Server + " in SERVERS")
+		log.Print("Failed to find " + s.Server + " in SERVERS")
 	}
 	return server
 }
@@ -978,23 +980,25 @@ func readManifest(path string) {
 }
 
 // path must be relative to the serving directory (sFlag).
-func resolvePath(path string) File {
+func resolvePath(path string) *File {
 	prefix := ""
 	suffix := "/" + path
 	for {
 		var offset int = strings.Index(suffix[1:], "/") + 1
 		if offset < 1 {
-			log.Fatal("Failed to find branch for " + path)
+			log.Print("Failed to find branch for " + path)
+			return nil
 		}
 		var name string = suffix[:offset]
 		if len(name) == 0 {
-			log.Fatal("Found empty component for " + path)
+			log.Print("Found empty component for " + path)
+			return nil
 		}
 		prefix += name
 		suffix = suffix[offset:]
 		branch, ok := BRANCHES[prefix]
 		if ok {
-			return File{Branch: branch, Relpath: suffix}
+			return &File{Branch: branch, Relpath: suffix}
 		}
 	}
 }

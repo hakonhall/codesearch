@@ -1,8 +1,8 @@
-hOW TO BUILD
+HOW TO BUILD
 
 Directory layout:
   GITPATH:  The directory to checkout the codesearch repository to.
-            We'll use ~/codesearch/git
+            We'll use ~/codesearch/codesearch
   GOPATH: The directory go will output artifacts and binaries to.
           We'll use ~/codesearch/gopath
 
@@ -14,8 +14,8 @@ Check out the code to GITPATH, build, and install it to GOPATH:
 
   mkdir ~/codesearch
   cd ~/codesearch
-  git clone git@github.com:hakonhall/codesearch.git git
-  cd git
+  git clone git@github.com:hakonhall/codesearch.git codesearch
+  cd codesearch
   go install ./...
 
 This should have created 3 binaries in ~/codesearch/gopath/bin.

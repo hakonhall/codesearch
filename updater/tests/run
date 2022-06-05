@@ -1,0 +1,48 @@
+#!/bin/bash
+
+Fail() {
+    printf "%s\n" "$1" >& 2
+    exit 2
+}
+
+if ! [[ "$1" =~ ^tests/[^' ']*_test$ ]]
+then
+    Fail "Wrong usage: first argument must be a test in tests/"
+fi
+
+if ! test -x "$1"
+then
+    Fail "No such test: $1"
+fi
+
+dir="$1".d
+if ! test -r "$dir"/expected
+then
+    Fail "No such file: $dir/expected"
+fi
+
+PATH=lib:"$PATH"
+
+if "$1" &> "$dir"/actual
+then
+    if diff -u "$dir"/{expected,actual}
+    then
+        echo OK
+    else
+        echo "FAILED: There were diffs"
+        exit 1
+    fi
+else
+    # OMG. 'local exit_status=$?' would result in a blank exit_status, because
+    # 'local exit_status' declaration clears is.  Therefore it has to be
+    # declared before the if.
+    exit_status=$?
+    if diff -u "$dir"/{expected,actual}
+    then
+        echo OK
+    else
+        echo "FAILED: diff in ouput"
+    fi
+    Fail "FAILED: Exit status '$exit_status'"
+fi
+

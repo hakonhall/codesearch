@@ -1,0 +1,34 @@
+#!/bin/bash
+
+set -e
+
+test -e tests/config_test || exit 2
+
+source util.bash
+source config.bash
+
+ReadConfig ~/codesearch/updater/tests/test.config
+
+config::resolve::code
+config::resolve::fileindex
+#config::resolve::gopath
+config::resolve::index
+config::resolve::manifest
+#config::resolve::port
+config::resolve::timefile
+#config::resolve::webdir
+config::resolve::workdir
+
+#declare -p _CONFIG_VARS
+declare -p _CONFIG_VARS_RESOLVED
+#declare -p _CONFIG_PATH_DIRS
+declare -p _CONFIG_PATH_SHORTS
+declare -p _CONFIG_MANIFESTS
+declare -p _CONFIG_MANIFEST_COMMANDS
+declare -p GITHUB_SERVERS GITHUB_API_URLS
+declare -p GITHUB_URLS
+#declare -p GITHUB_TOKENS
+
+ResolveGitHubServer github
+declare -p OUT
+#declare -p OUT2

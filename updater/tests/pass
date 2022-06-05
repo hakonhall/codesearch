@@ -1,0 +1,6 @@
+set -xe
+
+for name
+do
+    cp tests/${name}_test.d/actual tests/${name}_test.d/expected
+done

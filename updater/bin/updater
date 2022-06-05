@@ -1,0 +1,90 @@
+#!/bin/bash
+
+set -e
+
+# Ensure library files in ../lib can be sourced pathless.
+PROGRAM=$(realpath "${BASH_SOURCE[0]}") || exit 2
+PATH="${PROGRAM%/*/*}"/lib:"$PATH"
+
+source config.bash || exit 2
+source sync-repos.bash || exit 2
+source update-indices.bash || exit 2
+source update-manifest.bash || exit 2
+source util.bash || exit 2
+
+Usage() {
+    cat <<EOF
+Usage: updater [OPTION...]
+Update the manifest, synchronize the git repos, and update the indices.
+
+Options:
+  -c,--config FILE   Path to config file, see --help-config. Required.
+  -d,--daemon SEC    Update in loop, sleeping SEC seconds between each run.
+  -i,--index         Update the indices (only).
+  -m,--manifest      Update the manifest (only).
+  -s,--sync          Synchronize the git repos with the manifest (only).
+EOF
+    exit 0
+}
+
+Main() {
+    local configfile
+    local -i seconds=-1
+    local -A actions=()
+
+    while (( $# > 0 ))
+    do
+        local arg="$1"
+        shift
+        case "$arg" in
+            -c|--config)
+                configfile="$1"
+                shift || exit 1
+                ;;
+            -d|--daemon)
+                seconds="$1"
+                shift || Fail "Missing argument to '$arg'"
+                ;;
+            -h|--help) Usage ;;
+            --help-config) HelpConfig ;;
+            -i|--index) actions[index]=1 ;;
+            -m|--manifest) actions[manifest]=1 ;;
+            -s|--sync) actions[sync]=1 ;;
+            *) Fail "Extra arguments: '$arg'" ;;
+        esac
+    done
+
+    (( ${#configfile} > 0 )) ||
+        Fail "--config is required, see --help for usage"
+
+    (( ${#actions[@]} > 0 )) || actions=([manifest]=1 [sync]=1 [index]=1)
+
+    while true
+    do
+        time {
+            local timestamp
+            timestamp="$(date -Iseconds)"
+
+            ReadConfig "$configfile"
+            ! test -v "actions[manifest]" || ResolveGitBranches "$configfile"
+            ! test -v "actions[sync]"     || SyncRepos "$configfile"
+            ! test -v "actions[index]"    || UpdateIndices "$configfile"
+
+            config::resolve::timefile
+            echo "$timestamp" > "$OUT3"
+        }
+
+        (( seconds >= 0 )) || break
+
+        local duration="$seconds seconds"
+        if (( seconds % 60 == 0 )); then
+            duration="$((seconds / 60)) minutes"
+        fi
+        printf "%s Update done, waiting %s before next update\n" \
+               "$(date +%FT%T)" "$duration"
+
+        sleep "$seconds"
+    done
+}
+
+Main "$@"

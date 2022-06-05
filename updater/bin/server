@@ -1,0 +1,74 @@
+#!/bin/bash
+
+set -e
+
+# Ensure library files in ../lib can be sourced pathless.
+PROGRAM=$(realpath "${BASH_SOURCE[0]}") || exit 2
+PATH="${PROGRAM%/*/*}"/lib:"$PATH"
+
+source config.bash || exit 2
+source util.bash || exit 2
+source server.bash || exit 2
+
+Usage() {
+    cat <<EOF
+Usage: server [OPTION...]
+Start or stop cserver
+
+Options:
+  -c,--config FILE   Path to config file, see --help-config. Required.
+  -d,--daemon        Start server in background.
+EOF
+    exit 0
+}
+
+Main() {
+    local configfile
+    local daemon=false server=false
+
+    while (( $# > 0 ))
+    do
+        local arg="$1"
+        shift
+        case "$arg" in
+            -c|--config)
+                configfile="$1"
+                shift || exit 1
+                ;;
+            -h|--help) Usage ;;
+            -d|--daemon) daemon=true ;;
+            --help-config) HelpConfig ;;
+            -s|--server) server=true ;;
+            *) Fail "Extra arguments: '$arg'" ;;
+        esac
+    done
+
+    test -n "$configfile" || Fail "--config is required, see --help for usage"
+
+    if $daemon
+    then
+        ReadConfig "$configfile"
+        configfile="$OUT"
+
+        config::resolve::log
+        local logfile="$OUT"
+
+        type nohup &> /dev/null || Fail "Missing required program: 'nohup'"
+        exec &>> "$logfile" || Fail "Failed to redirect stdout/err to $logfile"
+        Log "Starting server"
+
+        exec nohup "$PROGRAM" --server -c "$configfile"
+        Fail "Failed to execute '$PROGRAM'"
+    elif $server
+    then
+        ReadConfig "$configfile"
+        configfile="$OUT"
+
+        config::resolve::workdir
+        echo "$$" > "$OUT"/cserver.pid
+    fi
+
+    Server "$configfile"
+}
+
+Main "$@"

@@ -33,6 +33,7 @@ import (
 
 // An IndexWriter creates an on-disk index corresponding to a set of files.
 type IndexWriter struct {
+	Force bool   // Ignore size, line-length, and trigrams limits
 	LogSkip bool // log information about skipped files
 	Verbose bool // log status using package log
 
@@ -60,7 +61,8 @@ const npost = 64 << 20 / 8 // 64 MB worth of post entries
 // Create returns a new IndexWriter that will write the index to file.
 func Create(file string) *IndexWriter {
 	return &IndexWriter{
-	        LogSkip: true,
+	        Force:     false,
+	        LogSkip:   true,
 		trigram:   sparse.NewSet(1 << 24),
 		nameData:  bufCreate(""),
 		nameIndex: bufCreate(""),
@@ -156,13 +158,13 @@ func (ix *IndexWriter) Add(name string, f io.Reader) {
 			}
 			return
 		}
-		if n > maxFileLen {
+		if !ix.Force && n > maxFileLen {
 			if ix.LogSkip {
 				log.Printf("%s: too long, ignoring\n", name)
 			}
 			return
 		}
-		if linelen++; linelen > maxLineLen {
+		if linelen++; !ix.Force && linelen > maxLineLen {
 			if ix.LogSkip {
 				log.Printf("%s: very long lines, ignoring\n", name)
 			}
@@ -172,9 +174,9 @@ func (ix *IndexWriter) Add(name string, f io.Reader) {
 			linelen = 0
 		}
 	}
-	if ix.trigram.Len() > maxTextTrigrams {
+	if !ix.Force && ix.trigram.Len() > maxTextTrigrams {
 		if ix.LogSkip {
-			log.Printf("%s: too many trigrams, probably not text, ignoring\n", name)
+			log.Printf("%s: too many trigrams (%d), probably not text, ignoring\n", name, ix.trigram.Len())
 		}
 		return
 	}

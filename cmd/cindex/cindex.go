@@ -16,7 +16,7 @@ import (
 	"github.com/hakonhall/codesearch/index"
 )
 
-var usageMessage = `usage: cindex [-index file] [-list] [-reset] [path...]
+var usageMessage = `usage: cindex [-index file] [-list] [-reset] [-force] [path...]
 
 Cindex prepares the trigram index for use by csearch.  The index is the
 file named by -index, or else $CSEARCHINDEX, or else $HOME/.csearchindex.
@@ -46,6 +46,9 @@ information about other paths that might already be indexed
 (the ones printed by cindex -list).  The -reset flag causes cindex to
 delete the existing index before indexing the new paths.
 With no path arguments, cindex -reset removes the index.
+
+Files that are too large (>1 GB), have too long lines (2k), or have too many
+trigraphs (20k) are skipped.  -force ignores these limits.
 `
 
 func usage() {
@@ -54,11 +57,12 @@ func usage() {
 }
 
 var (
-	indexFlag    = flag.String("index", "", "path to index file")
+	indexFlag   = flag.String("index", "", "path to index file")
 	listFlag    = flag.Bool("list", false, "list indexed paths and exit")
 	resetFlag   = flag.Bool("reset", false, "discard existing index")
 	verboseFlag = flag.Bool("verbose", false, "print extra information")
 	cpuProfile  = flag.String("cpuprofile", "", "write cpu profile to this file")
+	forceFlag   = flag.Bool("force", false, "force addition to index")
 )
 
 func main() {
@@ -125,6 +129,7 @@ func main() {
 	}
 
 	ix := index.Create(file)
+	ix.Force = *forceFlag
 	ix.Verbose = *verboseFlag
 	ix.AddPaths(args)
 	for _, arg := range args {

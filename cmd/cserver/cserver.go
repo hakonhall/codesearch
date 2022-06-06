@@ -29,7 +29,7 @@ Start HTTP server, serving a search and view interface of a source tree.
 
 Options:
   -f FIDX     Path to file index made on SOURCE.*
-  -i IDX      Path to index made by cindex on SOURCE. [CSEARCHINDEX]
+  -index IDX  Path to index made by cindex on SOURCE. [CSEARCHINDEX]
   -p PORT     Port to listen to. [80]
   -s SOURCE   Path to source directory.*
   -t TSFILE   Path to timestamp file of the last index update.*
@@ -40,6 +40,8 @@ WARNING: All files and directories below STATIC and SOURCE are accessible from
 the cserver HTTP server.  
 `
 
+var INDEX_PATH string
+
 func usage() {
 	fmt.Fprintf(os.Stderr, usageMessage)
 	os.Exit(2)
@@ -47,7 +49,7 @@ func usage() {
 
 var (
 	fFlag       = flag.String("f", "", "Path to file index (required)")
-	iFlag       = flag.String("i", "", "Path to index made by cindex on the source tree [CSEARCHINDEX]")
+	indexFlag   = flag.String("index", "", "Path to index file [CSEARCHINDEX]")
 	pFlag       = flag.Int("p", 80, "Port to listen to [80]")
 	sFlag       = flag.String("s", "", "Path to the source tree (required)")
 	tFlag       = flag.String("t", "", "Path to the timestamp file of the last index update (required)")
@@ -399,7 +401,7 @@ func Search(writer http.ResponseWriter, request *http.Request, query string,
 	}
 	q := index.RegexpQuery(re.Syntax)
 
-	ix := index.Open(index.File())
+	ix := index.Open(INDEX_PATH)
 	ix.Verbose = false
 	var post []uint32 = ix.PostingQuery(q)
 
@@ -1001,13 +1003,17 @@ func main() {
 		log.Fatal("-f is required, see --help for usage")
 	}
 
-        if *iFlag == "" {
-		env := os.Getenv("CSEARCHINDEX")
-                if env == "" {
-                   log.Fatal("Either -i or the environment variable CSEARCHINDEX must be set")
-                }
-	} else {
-          os.Setenv("CSEARCHINDEX", *iFlag)
+	INDEX_PATH = index.File(*indexFlag)
+        indexfileInfo, e := os.Stat(INDEX_PATH)
+        if e != nil {
+		if os.IsNotExist(e) {
+			log.Fatal("No such index file: " + INDEX_PATH)
+		} else {
+			log.Fatal("Failed to stat file: " + INDEX_PATH)
+		}
+        }
+        if !indexfileInfo.Mode().IsRegular() {
+		log.Fatal("Index file points to a directory: " + INDEX_PATH);
         }
 
         if *sFlag == "" {

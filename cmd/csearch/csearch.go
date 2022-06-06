@@ -48,6 +48,7 @@ func usage() {
 var (
 	fFlag       = flag.String("f", "", "search only files with names matching this regexp")
 	iFlag       = flag.Bool("i", false, "case-insensitive search")
+	indexFlag   = flag.String("index", "", "path to index file")
 	verboseFlag = flag.Bool("verbose", false, "print extra information")
 	bruteFlag   = flag.Bool("brute", false, "brute force - search all files in index")
 	cpuProfile  = flag.String("cpuprofile", "", "write cpu profile to this file")
@@ -101,7 +102,7 @@ func Main() {
 		log.Printf("query: %s\n", q)
 	}
 
-	ix := index.Open(index.File())
+	ix := index.Open(index.File(*indexFlag))
 	ix.Verbose = *verboseFlag
 	var post []uint32
 	if *bruteFlag {

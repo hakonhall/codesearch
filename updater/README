@@ -1,10 +1,10 @@
 # Move and fix content of *.service files.  Below is an example.
 
-systemctl --user link /home/hakon/codesearch/codesearch/updater/codesearch-server.service
+systemctl --user link /home/hakon/codesearch/codesearch/updater/systemd/codesearch-server.service
 systemctl --user enable codesearch-server.service
 systemctl --user start codesearch-server.service
 
-systemctl --user link /home/hakon/codesearch/codesearch/updater/codesearch-updater.service
+systemctl --user link /home/hakon/codesearch/codesearch/updater/systemd/codesearch-updater.service
 systemctl --user enable codesearch-updater.service
 systemctl --user start codesearch-updater.service
 

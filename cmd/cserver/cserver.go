@@ -28,8 +28,8 @@ var usageMessage = `usage: cserver [OPTION...]
 Start HTTP server, serving a search and view interface of a source tree.
 
 Options:
-  -f FIDX     Path to file index made on SOURCE.*
-  -i IDX      Path to index made by cindex on SOURCE. [CSEARCHINDEX]
+  -f FIDX     Path to file index made on the paths of SOURCE.*
+  -index IDX  Path to index made by cindex on SOURCE. [CSEARCHINDEX]
   -p PORT     Port to listen to. [80]
   -s SOURCE   Path to source directory.*
   -t TSFILE   Path to timestamp file of the last index update.*
@@ -40,6 +40,8 @@ WARNING: All files and directories below STATIC and SOURCE are accessible from
 the cserver HTTP server.  
 `
 
+var INDEX_PATH string
+
 func usage() {
 	fmt.Fprintf(os.Stderr, usageMessage)
 	os.Exit(2)
@@ -47,7 +49,7 @@ func usage() {
 
 var (
 	fFlag       = flag.String("f", "", "Path to file index (required)")
-	iFlag       = flag.String("i", "", "Path to index made by cindex on the source tree [CSEARCHINDEX]")
+	indexFlag   = flag.String("index", "", "Path to index file [CSEARCHINDEX]")
 	pFlag       = flag.Int("p", 80, "Port to listen to [80]")
 	sFlag       = flag.String("s", "", "Path to the source tree (required)")
 	tFlag       = flag.String("t", "", "Path to the timestamp file of the last index update (required)")
@@ -354,6 +356,7 @@ func PrintHit(writer http.ResponseWriter, query string, re *stdregexp.Regexp,
 func Search(writer http.ResponseWriter, request *http.Request, query string,
 	file_filter string, select_hit int, direction string,
 	exclude_file_filter string, max_hits int, ignore_case bool) string {
+	// (?m) => ^ and $ match beginning and end of line, respectively
 	pattern := "(?m)" + query
 	if ignore_case {
 		pattern = "(?i)" + pattern;
@@ -397,9 +400,10 @@ func Search(writer http.ResponseWriter, request *http.Request, query string,
 			log.Fatal("xfre cannot be nil if err isn't!")
 		}
 	}
+
 	q := index.RegexpQuery(re.Syntax)
 
-	ix := index.Open(index.File())
+	ix := index.Open(INDEX_PATH)
 	ix.Verbose = false
 	var post []uint32 = ix.PostingQuery(q)
 
@@ -460,7 +464,6 @@ func Search(writer http.ResponseWriter, request *http.Request, query string,
 				Regexp: re,
 				Stderr: os.Stderr,
 			}
-
 			grep.File2(name)
 
 			if len(grep.MatchedLines) > 0 {
@@ -509,57 +512,102 @@ func Search(writer http.ResponseWriter, request *http.Request, query string,
 func SearchFile(writer http.ResponseWriter, request *http.Request,
 	file_filter string, exclude_file_filter string, max_hits int,
 	ignore_case bool) string {
-	file_pattern := file_filter
+
+	file_pattern := "(?m)" + file_filter
 	if ignore_case {
 		file_pattern = "(?i)" + file_pattern;
 	}
-	file_re, err := stdregexp.Compile(file_pattern)
+	file_re, err := regexp.Compile(file_pattern)
 	if err != nil {
 		log.Print(err)
-		return "Bad regular expression"
+		return "Bad file regular expression"
 	}
 
-	file, err := os.Open(*fFlag)
+	// pattern includes e.g. (?i), which is correct even for plain "regexp"
+	// package.
+	file_stdre, err := stdregexp.Compile(file_pattern)
 	if err != nil {
 		log.Print(err)
-		return "Failed to open file index"
+		file_stdre = nil  // Handled in escapeAndMarkLine
 	}
-	defer file.Close()
 
-	query := pretty_print_query2(file_filter, exclude_file_filter,
+	var xfile_re *regexp.Regexp
+	if exclude_file_filter != "" {
+		xfile_pattern := exclude_file_filter
+		if ignore_case {
+			xfile_pattern = "(?i)" + xfile_pattern;
+		}
+		xfile_re, err = regexp.Compile(xfile_pattern)
+		if err != nil {
+			log.Print(err)
+			return "Bad regular expression"
+		}
+	}
+
+	query := index.RegexpQuery(file_re.Syntax)
+
+	// TODO: Fix this path
+	idx := index.Open(*fFlag)
+	idx.Verbose = false
+	var post []uint32 = idx.PostingQuery(query)
+
+	pretty_query := pretty_print_query2(file_filter, exclude_file_filter,
 		max_hits, ignore_case)
+	selected_id := 0
+	num_hits := 0
+	truncated := false
 
 	fmt.Fprintf(writer, `
 <table class="hit">
 `)
 
-	selected_id := 0
-	hits := 0
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		if hits >= max_hits {
+	for _, fileid := range post {
+		if num_hits >= max_hits {
+			truncated = true
 			break
 		}
 
-		full_path := scanner.Text()
-		path := RemovePathPrefix(full_path)
+		manifest := idx.Name(fileid)
+		grep := regexp.Grep{ Regexp: file_re, Stderr: os.Stderr }
+		// This is no better than just looping through the lines
+		// of the files and matching (AFAIK), so there's only a
+		// benefit if we don't traverse through all files: Split
+		// up the list of paths in many.  Too many => I/O bound.
+		grep.File2(manifest)
 
-		file_url := fmt.Sprintf("/file/%s?%s",
-			EscapeForUrlPath(path), query)
-		
-		href := EscapeForAttributeValue(file_url)
+		for _, hit := range grep.MatchedLines {
+			if num_hits >= max_hits + 10 {
+				truncated = true
+				break
+			}
 
-		formatted_line, matches := escapeAndMarkLine(path, hits, file_re)
-		if !matches {
-			continue
-		}
+			path := hit.Line
 
-		selected_class := ""
-		if hits == selected_id {
-			selected_class = " selected-file"
-		}
 
-		fmt.Fprintf(writer, `
+			if xfile_re != nil &&
+				xfile_re.MatchString(path, true, true) >= 0 {
+				continue
+			}
+
+			// 'path' is a hit
+
+			file_url := fmt.Sprintf("/file/%s?%s",
+				EscapeForUrlPath(path), pretty_query)
+			href := EscapeForAttributeValue(file_url)
+			formatted_line, matches := escapeAndMarkLine(path,
+				num_hits, file_stdre)
+
+			if !matches {
+				log.Printf("Warning: Matched with RE2 but not regexp: %s\n",
+					file_filter)
+			}
+
+			selected_class := ""
+			if num_hits == selected_id {
+				selected_class = " selected-file"
+			}
+
+			fmt.Fprintf(writer, `
 <tr class="file-hit">
   <td class="file-hit">
     <table class="file-hit">
@@ -574,14 +622,11 @@ func SearchFile(writer http.ResponseWriter, request *http.Request,
     </script>
   </td>
 </tr>
-`, hits, selected_class, hits, href, formatted_line, GetNewFileString(path))
-
-		hits += 1
-	}
-
-	if err := scanner.Err(); err != nil {
-		log.Print(err)
-		return "Failed to read file"
+`, num_hits, selected_class, num_hits, href, formatted_line, GetNewFileString(path))
+			
+			num_hits += 1
+			
+		}
 	}
 
 	fmt.Fprintf(writer, `
@@ -590,16 +635,16 @@ func SearchFile(writer http.ResponseWriter, request *http.Request,
   var selected_hit = %d;
   var num_hits = %d;
 </script>
-`, selected_id, hits)
+`, selected_id, num_hits)
 
-        if (hits > 0) {
+        if (num_hits > 0) {
 		fmt.Fprintf(writer, `
 <hr class="end-of-results"/>
 `)
 	}
 
-	message := fmt.Sprintf("%d files", hits)
-	if hits >= max_hits {
+	message := fmt.Sprintf("%d files matched", num_hits)
+	if truncated {
 		message += " (result list truncated)"
 	}
 	return message
@@ -709,7 +754,7 @@ func PrintBottom(writer http.ResponseWriter, message string) {
       <tr class="footer">
         <td class="left-footer"><span class="key">?</span><span class="key-description"> toggles help</span></td>
         <td class="center-footer">%s</td>
-        <td class="right-footer"><a href="/static/manifest.json">repositories</a> indexed at %s</td>
+        <td class="right-footer"><a href="/static/repos.json">repositories</a> indexed at %s</td>
       </tr>
     </table>
   </body>
@@ -998,31 +1043,46 @@ func main() {
 	flag.Parse()
 
         if *fFlag == "" {
-		log.Fatal("-f is required, see --help for usage")
+		log.Fatal("-f is required, see -help for usage")
 	}
+        fileIndexFileInfo, e := os.Stat(*fFlag)
+        if e != nil {
+		if os.IsNotExist(e) {
+			log.Fatal("No such index file: " + *fFlag)
+		} else {
+			log.Fatal("Failed to stat file: " + *fFlag)
+		}
+        }
+        if !fileIndexFileInfo.Mode().IsRegular() {
+		log.Fatal("Not an index file: " + *fFlag);
+        }
 
-        if *iFlag == "" {
-		env := os.Getenv("CSEARCHINDEX")
-                if env == "" {
-                   log.Fatal("Either -i or the environment variable CSEARCHINDEX must be set")
-                }
-	} else {
-          os.Setenv("CSEARCHINDEX", *iFlag)
+	INDEX_PATH = index.File(*indexFlag)
+        indexfileInfo, e := os.Stat(INDEX_PATH)
+        if e != nil {
+		if os.IsNotExist(e) {
+			log.Fatal("No such index file: " + INDEX_PATH)
+		} else {
+			log.Fatal("Failed to stat file: " + INDEX_PATH)
+		}
+        }
+        if !indexfileInfo.Mode().IsRegular() {
+		log.Fatal("Index file points to a directory: " + INDEX_PATH);
         }
 
         if *sFlag == "" {
-		log.Fatal("-s is required, see --help for usage")
+		log.Fatal("-s is required, see -help for usage")
 	}
         if (*sFlag)[len(*sFlag)-1:] != "/" {
 		*sFlag += "/"
         }
 
         if *tFlag == "" {
-		log.Fatal("-t is required, see --help for usage")
+		log.Fatal("-t is required, see -help for usage")
 	}
 
         if *wFlag == "" {
-		log.Fatal("-w is required, see --help for usage")
+		log.Fatal("-w is required, see -help for usage")
 	}
         sFileInfo, e := os.Stat(*wFlag)
         if e != nil {

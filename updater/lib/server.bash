@@ -32,6 +32,6 @@ Server() {
     config::resolve::webdir
     local webdir="$OUT3"
 
-    exec "$cserver" -f "$fileindex" -i "$index" -p "$port" -s "$code" \
+    exec "$cserver" -f "$fileindex" -index "$index" -p "$port" -s "$code" \
          -t "$timefile" -w "$webdir"
 }

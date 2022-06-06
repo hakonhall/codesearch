@@ -22,7 +22,6 @@ Global settings:
   'index': Path to codesearch index file.* [workdir/csearch.index]
   'log': Path to cserver log file.* [workdir/cserver.log]
   'port':  Port cserver should listen to. [80]
-  'manifest': Path to manifest file, see below.* [webdir/static/manifest]
   'timefile': Path to index timestamp file.* [workdir/csearch.time]
   'webdir': Path to hakonhall/codesearch/cmd/cserver/static.* **
   'workdir': The working directory owned and managed by this program.* **
@@ -58,13 +57,16 @@ Example:
 
 MANIFEST
 
-The manifest file is a set of lines of the following form:
+A manifest file is a set of lines of the following form:
   SERVER ORG/REPO [#[REF] [DIR]]
 
 ORG may be a user USER.  The repository ORG/REPO located at SERVER will be
 cloned to DIR, SERVER/ORG/REPO by default, and checked out at REF if present.
+Manifest files are put in the manifest directory.  The manifest will be split up
+into smaller ones for performance.
 
-There is also a JSON manifest, of the form:
+There is also a JSON manifest intended for the HTTP server:
+
 {
   "servers": [
     { "name": "github", "url": "https://github.com" },
@@ -238,7 +240,7 @@ ReadConfig() {
                 fi
                 GITHUB_EXCLUDES["$server"]="$value"
                 ;;
-            code|fileindex|gopath|index|log|manifest|webdir|timefile|workdir)
+            code|fileindex|gopath|index|log|webdir|timefile|workdir)
                 _ResolveConfigPath "$configdir" "$value"
                 _CONFIG_VARS["$key"]="$OUT"
                 ;;
@@ -421,8 +423,36 @@ function config::resolve::port {
 
 # Sets OUT to the canonical absolute path, OUT2 to its parent, and OUT3 to OUT
 # or a relative path to OUT, whichever is shorter.
-function config::resolve::manifest {
-    if _ResolvingPath manifest webdir static/manifest; then
+function config::resolve::filelist {
+    # This cannot be specified in config as it is deemed internal
+    if _ResolvingPath filelist workdir filelist; then
+        test -d "$OUT2" || mkdir -p "$OUT2"
+    fi
+}
+
+# Sets OUT to the canonical absolute path, OUT2 to its parent, and OUT3 to OUT
+# or a relative path to OUT, whichever is shorter.
+function config::resolve::filelists {
+    # This cannot be specified in config as it is deemed internal
+    if _ResolvingPath filelists workdir filelists; then
+        test -d "$OUT2" || mkdir -p "$OUT2"
+    fi
+}
+
+# Sets OUT to the canonical absolute path, OUT2 to its parent, and OUT3 to OUT
+# or a relative path to OUT, whichever is shorter.
+function config::resolve::repos-json {
+    # This cannot be specified in config as it is deemed internal
+    if _ResolvingPath repos-json webdir static/repos.json; then
+        test -d "$OUT2" || mkdir -p "$OUT2"
+    fi
+}
+
+# Sets OUT to the canonical absolute path, OUT2 to its parent, and OUT3 to OUT
+# or a relative path to OUT, whichever is shorter.
+function config::resolve::repos-manifest {
+    # This cannot be specified in config as it is deemed internal
+    if _ResolvingPath repos-manifest workdir repos.mf; then
         test -d "$OUT2" || mkdir -p "$OUT2"
     fi
 }

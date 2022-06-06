@@ -408,7 +408,7 @@ func mergeOr(l1, l2 []uint32) []uint32 {
 }
 
 func corrupt() {
-	log.Fatal("corrupt index: remove " + File())
+	log.Fatal("corrupt index: remove file")
 }
 
 // An mmapData is mmap'ed read-only data from a file.
@@ -428,7 +428,10 @@ func mmap(file string) mmapData {
 
 // File returns the name of the index file to use.
 // It is either $CSEARCHINDEX or $HOME/.csearchindex.
-func File() string {
+func File(file string) string {
+	if file != "" {
+		return file
+	}
 	f := os.Getenv("CSEARCHINDEX")
 	if f != "" {
 		return f

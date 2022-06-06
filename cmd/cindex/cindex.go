@@ -16,10 +16,10 @@ import (
 	"github.com/hakonhall/codesearch/index"
 )
 
-var usageMessage = `usage: cindex [-list] [-reset] [path...]
+var usageMessage = `usage: cindex [-index file] [-list] [-reset] [-force] [path...]
 
 Cindex prepares the trigram index for use by csearch.  The index is the
-file named by $CSEARCHINDEX, or else $HOME/.csearchindex.
+file named by -index, or else $CSEARCHINDEX, or else $HOME/.csearchindex.
 
 The simplest invocation is
 
@@ -46,6 +46,9 @@ information about other paths that might already be indexed
 (the ones printed by cindex -list).  The -reset flag causes cindex to
 delete the existing index before indexing the new paths.
 With no path arguments, cindex -reset removes the index.
+
+Files that are too large (>1 GB), have too long lines (2k), or have too many
+trigraphs (20k) are skipped.  -force ignores these limits.
 `
 
 func usage() {
@@ -54,10 +57,12 @@ func usage() {
 }
 
 var (
+	indexFlag   = flag.String("index", "", "path to index file")
 	listFlag    = flag.Bool("list", false, "list indexed paths and exit")
 	resetFlag   = flag.Bool("reset", false, "discard existing index")
 	verboseFlag = flag.Bool("verbose", false, "print extra information")
 	cpuProfile  = flag.String("cpuprofile", "", "write cpu profile to this file")
+	forceFlag   = flag.Bool("force", false, "force addition to index")
 )
 
 func main() {
@@ -65,8 +70,10 @@ func main() {
 	flag.Parse()
 	args := flag.Args()
 
+	indexpath := index.File(*indexFlag)
+
 	if *listFlag {
-		ix := index.Open(index.File())
+		ix := index.Open(index.File(indexpath))
 		for _, arg := range ix.Paths() {
 			fmt.Printf("%s\n", arg)
 		}
@@ -84,11 +91,11 @@ func main() {
 	}
 
 	if *resetFlag && len(args) == 0 {
-		os.Remove(index.File())
+		os.Remove(index.File(indexpath))
 		return
 	}
 	if len(args) == 0 {
-		ix := index.Open(index.File())
+		ix := index.Open(index.File(indexpath))
 		for _, arg := range ix.Paths() {
 			args = append(args, arg)
 		}
@@ -111,7 +118,7 @@ func main() {
 		args = args[1:]
 	}
 
-	master := index.File()
+	master := index.File(indexpath)
 	if _, err := os.Stat(master); err != nil {
 		// Does not exist.
 		*resetFlag = true
@@ -122,6 +129,7 @@ func main() {
 	}
 
 	ix := index.Create(file)
+	ix.Force = *forceFlag
 	ix.Verbose = *verboseFlag
 	ix.AddPaths(args)
 	for _, arg := range args {

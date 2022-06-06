@@ -1,6 +1,7 @@
-found 14 github repos after excluding 1
-manifest updated: 14 repos (+14)
+found 15 github repos after excluding 1
+repos updated: 15 repos (+15)
 manifest:
+github hakonhall/code-prettify
 github hakonhall/codesearch
 github hakonhall/diffuse
 github hakonhall/gh
@@ -21,6 +22,7 @@ manifest.json:
     {"name": "github", "url": "https://github.com" }
   ],
   "branches": [
+    { "server": "github", "dir": "github/hakonhall/code-prettify", "repo": "hakonhall/code-prettify", "branch": null },
     { "server": "github", "dir": "github/hakonhall/codesearch", "repo": "hakonhall/codesearch", "branch": null },
     { "server": "github", "dir": "github/hakonhall/diffuse", "repo": "hakonhall/diffuse", "branch": null },
     { "server": "github", "dir": "github/hakonhall/gh", "repo": "hakonhall/gh", "branch": null },

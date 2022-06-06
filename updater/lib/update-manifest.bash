@@ -13,31 +13,36 @@ source manifest.bash
 # should be checked out, and save that to the path at $2.
 ResolveGitBranches() {
     local configfile="$1"
-    local manifest="$2" # Defaults to manifest from config
+    local reposfile="$2" # Defaults to repos-manifest from config
     local verbose="${3:-false}"
 
     ReadConfig "$configfile"
     configfile="$configfile"
 
-    if test "$manifest" == ""; then
-        config::resolve::manifest
-        manifest="$OUT3"
+    if test "$reposfile" == ""; then
+        config::resolve::repos-manifest
+        reposfile="$OUT3"
     else
-        PrettyPath "$manifest"
-        manifest="$OUT"
+        PrettyPath "$reposfile"
+        reposfile="$OUT"
     fi
 
-    > "$manifest".unsorted || Fail "Failed to create $manifest.unsorted"
-    _ResolveIncludes "$configfile" "$manifest".unsorted
-    _ResolveManifestSections "$configfile" "$manifest".unsorted
-    sort -u "$manifest".unsorted > "$manifest".new
-    rm "$manifest".unsorted
+    config::resolve::repos-json
+    local repos_json="$OUT3"
+
+    > "$reposfile".unsorted || Fail "Failed to create $reposfile.unsorted"
+    _ResolveIncludes "$configfile" "$reposfile".unsorted
+    _ResolveManifestSections "$configfile" "$reposfile".unsorted
+    sort -u "$reposfile".unsorted > "$reposfile".new
+    rm "$reposfile".unsorted
+
+    _WriteJsonManifest "$reposfile".new "$repos_json".new
 
     local diff exit_status
-    if diff=$(diff -Nu "$manifest"{,.new}); then
+    if diff=$(diff -Nu "$reposfile"{,.new}); then
         :
     elif (( $? == 2 )); then
-        Fail "Failed to diff '$manifest' and '$manifest.new', aborting"
+        Fail "Failed to diff '$reposfile' and '$reposfile.new', aborting"
     fi
 
     local -i nAdded=0 nRemoved=0
@@ -57,35 +62,41 @@ ResolveGitBranches() {
     fi
 
     local -i n=0
-    n=$(wc -l < "$manifest".new) ||
-        Fail "Failed to count lines in $manifest.new"
+    n=$(wc -l < "$reposfile".new) ||
+        Fail "Failed to count lines in $reposfile.new"
 
     if (( nAdded > 0 )); then
         if (( nRemoved > 0 )); then
-            Log "manifest updated: $n repos (+$nAdded -$nRemoved)"
+            Log "repos updated: $n repos (+$nAdded -$nRemoved)"
         else
-            Log "manifest updated: $n repos (+$nAdded)"
+            Log "repos updated: $n repos (+$nAdded)"
         fi
     else
         if (( nRemoved > 0 )); then
-            Log "manifest updated: $n repos (-$nRemoved)"
+            Log "repos updated: $n repos (-$nRemoved)"
         else
-            Log "manifest unchanged: $n repos"
+            Log "repos unchanged: $n repos"
         fi
     fi
 
-    if (( nAdded > 0 || nRemoved > 0 )); then
-        mv "$manifest"{.new,}
-    elif (( ${#diff} == 0 )); then
-        rm "$manifest".new
+    # Try to update the files simultaneously.
+
+    if test -e "$reposfile" && diff -q "$reposfile" "$reposfile".new
+    then
+        rm "$reposfile".new
     else
-        Fail "Non-empty diff but no lines were added nor removed"
+        mv "$reposfile".new "$reposfile"
     fi
 
-    _WriteJsonManifest "$manifest" "$manifest".json
+    if test -e "$repos_json" && diff -q "$repos_json" "$repos_json".new
+    then
+        rm "$repos_json".new
+    else
+        mv "$repos_json".new "$repos_json"
+    fi
 
-    OUT="$manifest"
-    OUT2="$manifest".json
+    OUT="$reposfile"
+    OUT2="$repos_json"
 }
 
 _ResolveIncludes() {

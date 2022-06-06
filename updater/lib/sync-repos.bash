@@ -12,8 +12,8 @@ function SyncRepos {
 
     ReadConfig "$configfile"
 
-    config::resolve::manifest
-    local manifest_path="$OUT"
+    config::resolve::repos-manifest
+    local repos_manifest="$OUT"
 
     config::resolve::code
     local reposDir="$OUT"
@@ -109,7 +109,7 @@ function SyncRepos {
             # Allow non-existing refs(!)
             (( ${#ref} == 0 )) || git -C "$dir" checkout -q "$ref" || true
         fi
-    done < "$manifest_path"
+    done < "$repos_manifest"
 
     local -a dirs_to_remove=("${!orphaned_dirs[@]}")
     if ((${#dirs_to_remove[@]} > 0))

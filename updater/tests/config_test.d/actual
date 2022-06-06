@@ -1,5 +1,8 @@
-declare -A _CONFIG_VARS_RESOLVED=([manifest]="1" [workdir]="1" [index]="1" [fileindex]="1" [webdir]="1" [timefile]="1" [code]="1" )
-declare -A _CONFIG_PATH_SHORTS=([manifest]="tests/www/static/manifest" [workdir]="tests/work" [index]="tests/index/cs.idx" [fileindex]="tests/index/cs.fileidx" [webdir]="tests/www" [timefile]="tests/work/csearch.time" [code]="tests/work/code" )
+declare -- OUT3="tests/work/filelists"
+declare -- OUT3="tests/www/static/repos.json"
+declare -- OUT3="tests/work/repos.mf"
+declare -A _CONFIG_VARS_RESOLVED=([workdir]="1" [repos-json]="1" [repos-manifest]="1" [filelists]="1" [index]="1" [fileindex]="1" [webdir]="1" [timefile]="1" [code]="1" )
+declare -A _CONFIG_PATH_SHORTS=([workdir]="tests/work" [repos-json]="tests/www/static/repos.json" [repos-manifest]="tests/work/repos.mf" [filelists]="tests/work/filelists" [index]="tests/index/cs.idx" [fileindex]="tests/index/cs.fileidx" [webdir]="tests/www" [timefile]="tests/work/csearch.time" [code]="tests/work/code" )
 declare -a _CONFIG_MANIFESTS=([0]="tests/update-manifest_test.d/tmp/extra.manifest")
 declare -A _CONFIG_MANIFEST_COMMANDS=([tests/update-manifest_test.d/tmp/extra.manifest]="tests/update-manifest_test.d/gen-manifest tests/update-manifest_test.d/tmp/extra.manifest" )
 declare -a GITHUB_SERVERS=([0]="github")

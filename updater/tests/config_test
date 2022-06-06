@@ -7,13 +7,18 @@ test -e tests/config_test || exit 2
 source util.bash
 source config.bash
 
-ReadConfig ~/codesearch/updater/tests/test.config
+ReadConfig ~/codesearch/codesearch/updater/tests/test.config
 
 config::resolve::code
-config::resolve::fileindex
 #config::resolve::gopath
 config::resolve::index
-config::resolve::manifest
+config::resolve::fileindex
+config::resolve::filelists
+declare -p OUT3
+config::resolve::repos-json
+declare -p OUT3
+config::resolve::repos-manifest
+declare -p OUT3
 #config::resolve::port
 config::resolve::timefile
 #config::resolve::webdir

@@ -28,7 +28,7 @@ var usageMessage = `usage: cserver [OPTION...]
 Start HTTP server, serving a search and view interface of a source tree.
 
 Options:
-  -f FIDX     Path to file index made on SOURCE.*
+  -f FIDX     Path to file index made on the paths of SOURCE.*
   -index IDX  Path to index made by cindex on SOURCE. [CSEARCHINDEX]
   -p PORT     Port to listen to. [80]
   -s SOURCE   Path to source directory.*
@@ -531,12 +531,12 @@ func SearchFile(writer http.ResponseWriter, request *http.Request,
 		file_stdre = nil  // Handled in escapeAndMarkLine
 	}
 
-	xfile_pattern := exclude_file_filter
-	if ignore_case {
-		xfile_pattern = "(?i)" + xfile_pattern;
-	}
 	var xfile_re *regexp.Regexp
-	if xfile_pattern != "" {
+	if exclude_file_filter != "" {
+		xfile_pattern := exclude_file_filter
+		if ignore_case {
+			xfile_pattern = "(?i)" + xfile_pattern;
+		}
 		xfile_re, err = regexp.Compile(xfile_pattern)
 		if err != nil {
 			log.Print(err)
@@ -547,8 +547,7 @@ func SearchFile(writer http.ResponseWriter, request *http.Request,
 	query := index.RegexpQuery(file_re.Syntax)
 
 	// TODO: Fix this path
-	fileindex := INDEX_PATH + ".files"
-	idx := index.Open(fileindex)
+	idx := index.Open(*fFlag)
 	idx.Verbose = false
 	var post []uint32 = idx.PostingQuery(query)
 
@@ -755,7 +754,7 @@ func PrintBottom(writer http.ResponseWriter, message string) {
       <tr class="footer">
         <td class="left-footer"><span class="key">?</span><span class="key-description"> toggles help</span></td>
         <td class="center-footer">%s</td>
-        <td class="right-footer"><a href="/static/manifest.json">repositories</a> indexed at %s</td>
+        <td class="right-footer"><a href="/static/repos.json">repositories</a> indexed at %s</td>
       </tr>
     </table>
   </body>
@@ -1044,8 +1043,19 @@ func main() {
 	flag.Parse()
 
         if *fFlag == "" {
-		log.Fatal("-f is required, see --help for usage")
+		log.Fatal("-f is required, see -help for usage")
 	}
+        fileIndexFileInfo, e := os.Stat(*fFlag)
+        if e != nil {
+		if os.IsNotExist(e) {
+			log.Fatal("No such index file: " + *fFlag)
+		} else {
+			log.Fatal("Failed to stat file: " + *fFlag)
+		}
+        }
+        if !fileIndexFileInfo.Mode().IsRegular() {
+		log.Fatal("Not an index file: " + *fFlag);
+        }
 
 	INDEX_PATH = index.File(*indexFlag)
         indexfileInfo, e := os.Stat(INDEX_PATH)
@@ -1061,18 +1071,18 @@ func main() {
         }
 
         if *sFlag == "" {
-		log.Fatal("-s is required, see --help for usage")
+		log.Fatal("-s is required, see -help for usage")
 	}
         if (*sFlag)[len(*sFlag)-1:] != "/" {
 		*sFlag += "/"
         }
 
         if *tFlag == "" {
-		log.Fatal("-t is required, see --help for usage")
+		log.Fatal("-t is required, see -help for usage")
 	}
 
         if *wFlag == "" {
-		log.Fatal("-w is required, see --help for usage")
+		log.Fatal("-w is required, see -help for usage")
 	}
         sFileInfo, e := os.Stat(*wFlag)
         if e != nil {

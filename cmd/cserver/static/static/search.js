@@ -150,14 +150,28 @@ function bump_selected_file(sign) {
     }
 }
 
-function GetFile() {
+function GetFileOrNull() {
     if (selected_hit >= 0) {
         return FILES[FILE_FROM_HIT[selected_hit]];
     } else if (SELECTED_FILE >= 0) {
         return FILES[SELECTED_FILE];
     } else {
-	alert("Internal error: GetFile called with not selection");
+        return null;
     }
+}
+
+function GetFile() {
+    var file = GetFileOrNull();
+    if (file == null)
+	alert("Internal error: GetFile called with not selection");
+    return file;
+}
+
+function GetFullDirectory() {
+    var path = GetFile().fullpath();
+    var slash_index = path.lastIndexOf("/");
+    var directory = path.substring(0, slash_index);
+    return directory;
 }
 
 function GetDirectory() {
@@ -253,6 +267,34 @@ function key_B() {
     key_git('blame', true);
 }
 
+function key_d() {
+    var file = GetFileOrNull();
+    if (file == null) return;
+
+    var xf_element = xf_input();
+    if (xf_element.value) {
+        xf_element.value += '|';
+    }
+    var path = escape_for_regex(file.fullpath());
+    xf_element.value += '^' + path + '$';
+    key_s();
+}
+
+function key_D() {
+    var file = GetFileOrNull();
+    if (file == null) return;
+    var filename = file.filename()
+    var i = filename.lastIndexOf('.')
+    var ext = i <= 0 ? '/' + filename : filename.substring(i);
+
+    var xf_element = xf_input();
+    if (xf_element.value) {
+        xf_element.value += '|';
+    }
+    xf_element.value += escape_for_regex(ext) + '$';
+    key_s();
+}
+
 function key_g() {
     key_git('blob', false);
 }
@@ -344,18 +386,20 @@ function equal_then_then(keyCode) {
     // WARNING: This case-list must match the one in equal_then().
     switch (first_char) {
     case 'd':
-	var directory = escape_for_regex(GetDirectory());
 	switch (second_char) {
-	case 's':
-	    // 'd' 's' ==> directory to query field (input field brought to
-	    // focus with 's' which has an ID of "q").
+	case 'q':
+	    // 'd' 'q' ==> directory to query field (input field brought to
+	    // focus with 'q' which has an ID of "q").
+	    var directory = escape_for_regex(GetDirectory());
 	    toggle_set_value_of("q", "\\b" + directory + "\\b");
 	    return false;
 	case 'f':
 	    // Match all files that are in or below the directory.
+	    var directory = escape_for_regex(GetFullDirectory());
 	    toggle_set_value_of("f", "^" + directory + "/");
 	    return false;
-	case 'F':
+	case 'x':
+	    var directory = escape_for_regex(GetFullDirectory());
 	    toggle_set_value_of("xf", "^" + directory + "/");
 	    return false;
 	}
@@ -363,28 +407,30 @@ function equal_then_then(keyCode) {
     case 'f':
 	var filename = escape_for_regex(GetFilename());
 	switch (second_char) {
-	case 's':
+	case 'q':
 	    toggle_set_value_of("q", "\\b" + filename + "\\b");
 	    return false;
 	case 'f':
 	    toggle_set_value_of("f", "/" + filename + "$");
 	    return false;
-	case 'F':
+	case 'x':
 	    toggle_set_value_of("xf", "/" + filename + "$");
 	    return false;
 	}
 	return true;
     case 'p':
-	var path = escape_for_regex(GetFile().fullpath());
 	switch (second_char) {
-	case 's':
+	case 'q':
+	    var path = escape_for_regex(GetFile().relpath());
 	    toggle_set_value_of("q", "\\b" + path + "\\b");
 	    return false;
 	case 'f':
 	    // Match all files that are in or below the path.
+	    var path = escape_for_regex(GetFile().fullpath());
 	    toggle_set_value_of("f", "^" + path + "$");
 	    return false;
-	case 'F':
+	case 'x':
+	    var path = escape_for_regex(GetFile().fullpath());
 	    toggle_set_value_of("xf", "^" + path + "$");
 	    return false;
 	}
@@ -445,11 +491,13 @@ document.onkeypress = function(event) {
 	case 0x2D: key_minus(); return false;
 	case 0x3D: key_equal_sign(); return false;
 	case 0x42: key_B(); return false;
+	case 0x44: key_D(); return false;
 	case 0x47: key_G(); return false;
 	case 0x48: key_H(); return false;
 	case 0x4A: key_J(); return false;
 	case 0x4F: key_O(); return false;
 	case 0x62: key_b(); return false;
+	case 0x64: key_d(); return false;
 	case 0x67: key_g(); return false;
 	case 0x68: key_h(); return false;
 	case 0x6A: key_j(); return false;

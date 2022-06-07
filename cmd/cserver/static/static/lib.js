@@ -228,6 +228,7 @@ class File {
         this._branch = branch;  // may be null
     }
     dir() { return this._dir; }
+    filename() { return this._relpath.substring(this._relpath.lastIndexOf('/') + 1); }
     fullpath() { return this._dir + '/' + this._relpath; }
     relpath() { return this._relpath; }
     url() { return this._url; }

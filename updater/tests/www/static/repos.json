@@ -1,0 +1,22 @@
+{
+  "servers": [
+    {"name": "github", "url": "https://github.com" }
+  ],
+  "branches": [
+    { "server": "github", "dir": "github/hakonhall/code-prettify", "repo": "hakonhall/code-prettify", "branch": null },
+    { "server": "github", "dir": "github/hakonhall/codesearch", "repo": "hakonhall/codesearch", "branch": null },
+    { "server": "github", "dir": "github/hakonhall/diffuse", "repo": "hakonhall/diffuse", "branch": null },
+    { "server": "github", "dir": "github/hakonhall/gh", "repo": "hakonhall/gh", "branch": null },
+    { "server": "github", "dir": "github/hakonhall/hwmonitor", "repo": "hakonhall/hwmonitor", "branch": null },
+    { "server": "github", "dir": "github/hakonhall/hybridmodules", "repo": "hakonhall/hybridmodules", "branch": null },
+    { "server": "github", "dir": "github/hakonhall/jake", "repo": "hakonhall/jake", "branch": null },
+    { "server": "github", "dir": "github/hakonhall/java-utils", "repo": "hakonhall/java-utils", "branch": null },
+    { "server": "github", "dir": "github/hakonhall/modjar", "repo": "hakonhall/modjar", "branch": null },
+    { "server": "github", "dir": "github/hakonhall/modulec", "repo": "hakonhall/modulec", "branch": null },
+    { "server": "github", "dir": "github/hakonhall/mvndeps", "repo": "hakonhall/mvndeps", "branch": null },
+    { "server": "github", "dir": "github/hakonhall/re", "repo": "hakonhall/re", "branch": null },
+    { "server": "github", "dir": "github/hakonhall/sh", "repo": "hakonhall/sh", "branch": null },
+    { "server": "github", "dir": "github/hakonhall/triplea", "repo": "hakonhall/triplea", "branch": null },
+    { "server": "github", "dir": "master/jdk#master", "repo": "openjdk/jdk", "branch": "master" }
+  ]
+}

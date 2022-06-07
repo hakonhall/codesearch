@@ -64,12 +64,17 @@ function SyncRepos {
             Log "updating $dir"
             pushd "$dir" > /dev/null
             if (( ${#ref} == 0 )); then
-                git pull --ff-only > /dev/null
-            else
-                git fetch
+                git pull --rebase > /dev/null
+            elif [[ "$ref" =~ ^[0-9a-f]{40}$ ]]
+            then
+                git fetch -q
                 # Set 'git config advice.detachedHead false' to reduce noise
                 # Allow non-existing references(!)
                 git checkout -q "$ref" || true
+            else
+                git fetch -q
+                git checkout -q "$ref"
+                git rebase -q
             fi
             popd > /dev/null
         else

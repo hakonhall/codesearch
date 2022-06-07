@@ -705,26 +705,28 @@ func PrintTop(writer http.ResponseWriter, error string, query string,
 
     <div id="help" class="help" style="display: none">
       <table align="center">
-    	<tr>
-    	  <td><span class="key">b</span><span class="key-description">: Git blame file</span></td>
-    	  <td><span class="key">g</span><span class="key-description">: Open on GitHub</span></td>
-    	  <td><span class="key">h</span><span class="key-description">: GitHub history</span></td>
-    	  <td><span class="key">j</span><span class="key-description">: Next matching line</span></td>
-    	  <td><span class="key">n</span><span class="key-description">: Next matching file</span></td>
-    	  <td><span class="key">o</span><span class="key-description">: Open file</span></td>
-    	  <td><span class="key">u</span><span class="key-description">: Close file</span></td>
-    	  <td><span class="key">+</span><span class="key-description">: Expand matches in file</span></td>
-	</tr>
-	<tr>
-    	  <td><span class="key">B</span><span class="key-description">: b in new window</span></td>
-    	  <td><span class="key">G</span><span class="key-description">: g in new window</span></td>
-    	  <td><span class="key">H</span><span class="key-description">: h in new window</span></td>
-    	  <td><span class="key">k</span><span class="key-description">: Previous matching line</span></td>
-    	  <td><span class="key">p</span><span class="key-description">: Previous matching file</span></td>
-    	  <td><span class="key">O</span><span class="key-description">: o in new window</span></td>
-    	  <td><span class="key">r</span><span class="key-description">: Reset search</span></td>
-    	  <td><span class="key">-</span><span class="key-description">: Collapse matches in file</span></td>
-    	</tr>
+        <tr>
+          <td><span class="key">b</span><span class="key-description">: Git blame file</span></td>
+          <td><span class="key">d</span><span class="key-description">: Exclude path</span></td>
+          <td><span class="key">g</span><span class="key-description">: Open on GitHub</span></td>
+          <td><span class="key">h</span><span class="key-description">: GitHub history</span></td>
+          <td><span class="key">j</span><span class="key-description">: Next matching line</span></td>
+          <td><span class="key">n</span><span class="key-description">: Next matching file</span></td>
+          <td><span class="key">o</span><span class="key-description">: Open file</span></td>
+          <td><span class="key">u</span><span class="key-description">: Close file</span></td>
+          <td><span class="key">+</span><span class="key-description">: Expand matches in file</span></td>
+        </tr>
+        <tr>
+          <td><span class="key">B</span><span class="key-description">: b in new window</span></td>
+          <td><span class="key">D</span><span class="key-description">: Exclude file ext.</span></td>
+          <td><span class="key">G</span><span class="key-description">: g in new window</span></td>
+          <td><span class="key">H</span><span class="key-description">: h in new window</span></td>
+          <td><span class="key">k</span><span class="key-description">: Previous matching line</span></td>
+          <td><span class="key">p</span><span class="key-description">: Previous matching file</span></td>
+          <td><span class="key">O</span><span class="key-description">: o in new window</span></td>
+          <td><span class="key">r</span><span class="key-description">: Reset search</span></td>
+          <td><span class="key">-</span><span class="key-description">: Collapse matches in file</span></td>
+        </tr>
       </table>
 
       <hr class="post-help"/>
@@ -1095,7 +1097,7 @@ func main() {
         if e != nil || !sFileInfo.IsDir() {
 		log.Fatal("Does not look like a path to cmd/cserver/static: " + *wFlag)
         }
-	readManifest(*wFlag + "/static/manifest.json")
+	readManifest(*wFlag + "/static/repos.json")
 
 	http.HandleFunc("/", search_handler)
 	http.Handle("/static/", http.FileServer(http.Dir(*wFlag)))

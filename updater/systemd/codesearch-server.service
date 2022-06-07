@@ -1,0 +1,10 @@
+[Unit]
+Description=Codesearch HTTP server
+
+[Service]
+ExecStart=/home/hakon/codesearch/codesearch/updater/bin/server -c /home/hakon/codesearch/config
+Restart=always
+RestartSec=1
+
+[Install]
+WantedBy=default.target

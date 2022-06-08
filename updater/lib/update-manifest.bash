@@ -138,7 +138,10 @@ _ResolveForServer() {
                 repos+=("$server $include")
             fi
         done <<< "${GITHUB_INCLUDES[$server]}"
+    fi
 
+    if (( ${#GITHUB_INCLUDE_ORGS[@]} > 0 ))
+    then
         while read -r
         do
             local include="$REPLY"
@@ -150,7 +153,10 @@ _ResolveForServer() {
                 repos+=("${OUTA[@]}")
             fi
         done <<< "${GITHUB_INCLUDE_ORGS[$server]}"
+    fi
 
+    if (( ${#GITHUB_INCLUDE_USERS[$server]} > 0 ))
+    then
         while read -r
         do
             local include="$REPLY"
@@ -162,9 +168,13 @@ _ResolveForServer() {
                 repos+=("${OUTA[@]}")
             fi
         done <<< "${GITHUB_INCLUDE_USERS[$server]}"
+    fi
 
+    if (( ${#repos[@]} > 0 ))
+    then
         local exclude_re="${GITHUB_EXCLUDES[$server]}"
-        if (( ${#exclude_re} > 0 )); then
+        if (( ${#exclude_re} > 0 ))
+        then
             local -i i=0
             for i in "${!repos[@]}"; do
                 local line="${repos[$i]}"

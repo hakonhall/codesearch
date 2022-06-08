@@ -96,7 +96,7 @@ function SyncRepos {
                         ;;
                 esac
                 url+="$orgrepo".git
-            elif [[ "$url" =~ ^https://([a-z0-9]+@)$DNS_RE0(:[0-9]+)?($|/) ]] ||
+            elif [[ "$url" =~ ^https://([a-z0-9]+@)?$DNS_RE0(:[0-9]+)?($|/) ]] ||
                  [[ "$url" =~ ^ssh://([a-z]+@)?$DNS_RE0(:[0-9]+)?($|/) ]]
             then
                 case "$lastUrlChar" in

@@ -582,7 +582,9 @@ func SearchFile(writer http.ResponseWriter, request *http.Request,
 			}
 
 			path := hit.Line
-
+			if len(path) > 0 && path[len(path) - 1] == '\n' {
+				path = path[:len(path) - 1]
+			}
 
 			if xfile_re != nil &&
 				xfile_re.MatchString(path, true, true) >= 0 {

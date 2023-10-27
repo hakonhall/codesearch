@@ -59,7 +59,13 @@ function SyncRepos {
             visited_dirs["$prefix_d"]=1
         done
 
-	if [ -d "$dir" ]
+        if [ -d "$dir" ] && ! [ -s "$dir"/.git/index ]
+        then
+            Log "corrupt $dir/.git/index"
+            rm -rf "$dir"
+        fi
+
+        if [ -d "$dir" ]
         then
             Log "updating $dir"
             pushd "$dir" > /dev/null

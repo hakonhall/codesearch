@@ -5,15 +5,15 @@
 package main
 
 import (
-	"flag"
-	"fmt"
-	"log"
-	"os"
-	"path/filepath"
-	"runtime/pprof"
-	"sort"
+    "flag"
+    "fmt"
+    "log"
+    "os"
+    "path/filepath"
+    "runtime/pprof"
+    "sort"
 
-	"github.com/hakonhall/codesearch/index"
+    "github.com/hakonhall/codesearch/index"
 )
 
 var usageMessage = `usage: cindex [-index file] [-list] [-reset] [-force] [path...]
@@ -23,17 +23,17 @@ file named by -index, or else $CSEARCHINDEX, or else $HOME/.csearchindex.
 
 The simplest invocation is
 
-	cindex path...
+    cindex path...
 
 which adds the file or directory tree named by each path to the index.
 For example:
 
-	cindex $HOME/src /usr/include
+    cindex $HOME/src /usr/include
 
 or, equivalently:
 
-	cindex $HOME/src
-	cindex /usr/include
+    cindex $HOME/src
+    cindex /usr/include
 
 If cindex is invoked with no paths, it reindexes the paths that have
 already been added, in case the files have changed.  Thus, 'cindex' by
@@ -52,117 +52,117 @@ trigraphs (20k) are skipped.  -force ignores these limits.
 `
 
 func usage() {
-	fmt.Fprintf(os.Stderr, usageMessage)
-	os.Exit(2)
+    fmt.Fprintf(os.Stderr, usageMessage)
+    os.Exit(2)
 }
 
 var (
-	indexFlag   = flag.String("index", "", "path to index file")
-	listFlag    = flag.Bool("list", false, "list indexed paths and exit")
-	resetFlag   = flag.Bool("reset", false, "discard existing index")
-	verboseFlag = flag.Bool("verbose", false, "print extra information")
-	cpuProfile  = flag.String("cpuprofile", "", "write cpu profile to this file")
-	forceFlag   = flag.Bool("force", false, "force addition to index")
+    indexFlag   = flag.String("index", "", "path to index file")
+    listFlag    = flag.Bool("list", false, "list indexed paths and exit")
+    resetFlag   = flag.Bool("reset", false, "discard existing index")
+    verboseFlag = flag.Bool("verbose", false, "print extra information")
+    cpuProfile  = flag.String("cpuprofile", "", "write cpu profile to this file")
+    forceFlag   = flag.Bool("force", false, "force addition to index")
 )
 
 func main() {
-	flag.Usage = usage
-	flag.Parse()
-	args := flag.Args()
+    flag.Usage = usage
+    flag.Parse()
+    args := flag.Args()
 
-	indexpath := index.File(*indexFlag)
+    indexpath := index.File(*indexFlag)
 
-	if *listFlag {
-		ix := index.Open(index.File(indexpath))
-		for _, arg := range ix.Paths() {
-			fmt.Printf("%s\n", arg)
-		}
-		return
-	}
+    if *listFlag {
+        ix := index.Open(index.File(indexpath))
+        for _, arg := range ix.Paths() {
+            fmt.Printf("%s\n", arg)
+        }
+        return
+    }
 
-	if *cpuProfile != "" {
-		f, err := os.Create(*cpuProfile)
-		if err != nil {
-			log.Fatal(err)
-		}
-		defer f.Close()
-		pprof.StartCPUProfile(f)
-		defer pprof.StopCPUProfile()
-	}
+    if *cpuProfile != "" {
+        f, err := os.Create(*cpuProfile)
+        if err != nil {
+            log.Fatal(err)
+        }
+        defer f.Close()
+        pprof.StartCPUProfile(f)
+        defer pprof.StopCPUProfile()
+    }
 
-	if *resetFlag && len(args) == 0 {
-		os.Remove(index.File(indexpath))
-		return
-	}
-	if len(args) == 0 {
-		ix := index.Open(index.File(indexpath))
-		for _, arg := range ix.Paths() {
-			args = append(args, arg)
-		}
-	}
+    if *resetFlag && len(args) == 0 {
+        os.Remove(index.File(indexpath))
+        return
+    }
+    if len(args) == 0 {
+        ix := index.Open(index.File(indexpath))
+        for _, arg := range ix.Paths() {
+            args = append(args, arg)
+        }
+    }
 
-	// Translate paths to absolute paths so that we can
-	// generate the file list in sorted order.
-	for i, arg := range args {
-		a, err := filepath.Abs(arg)
-		if err != nil {
-			log.Printf("%s: %s", arg, err)
-			args[i] = ""
-			continue
-		}
-		args[i] = a
-	}
-	sort.Strings(args)
+    // Translate paths to absolute paths so that we can
+    // generate the file list in sorted order.
+    for i, arg := range args {
+        a, err := filepath.Abs(arg)
+        if err != nil {
+            log.Printf("%s: %s", arg, err)
+            args[i] = ""
+            continue
+        }
+        args[i] = a
+    }
+    sort.Strings(args)
 
-	for len(args) > 0 && args[0] == "" {
-		args = args[1:]
-	}
+    for len(args) > 0 && args[0] == "" {
+        args = args[1:]
+    }
 
-	master := index.File(indexpath)
-	if _, err := os.Stat(master); err != nil {
-		// Does not exist.
-		*resetFlag = true
-	}
-	file := master
-	if !*resetFlag {
-		file += "~"
-	}
+    master := index.File(indexpath)
+    if _, err := os.Stat(master); err != nil {
+        // Does not exist.
+        *resetFlag = true
+    }
+    file := master
+    if !*resetFlag {
+        file += "~"
+    }
 
-	ix := index.Create(file)
-	ix.Force = *forceFlag
-	ix.Verbose = *verboseFlag
-	ix.AddPaths(args)
-	for _, arg := range args {
-		log.Printf("index %s", arg)
-		filepath.Walk(arg, func(path string, info os.FileInfo, err error) error {
-			if _, elem := filepath.Split(path); elem != "" {
-				// Skip various temporary or "hidden" files or directories.
-				if elem[0] == '.' || elem[0] == '#' || elem[0] == '~' || elem[len(elem)-1] == '~' {
-					if info.IsDir() {
-						return filepath.SkipDir
-					}
-					return nil
-				}
-			}
-			if err != nil {
-				log.Printf("%s: %s", path, err)
-				return nil
-			}
-			if info != nil && info.Mode()&os.ModeType == 0 {
-				ix.AddFile(path)
-			}
-			return nil
-		})
-	}
-	log.Printf("flush index")
-	ix.Flush()
+    ix := index.Create(file)
+    ix.Force = *forceFlag
+    ix.Verbose = *verboseFlag
+    ix.AddPaths(args)
+    for _, arg := range args {
+        log.Printf("index %s", arg)
+        filepath.Walk(arg, func(path string, info os.FileInfo, err error) error {
+            if _, elem := filepath.Split(path); elem != "" {
+                // Skip various temporary or "hidden" files or directories.
+                if elem == ".git" || elem[0] == '#' || elem[0] == '~' || elem[len(elem)-1] == '~' {
+                    if info.IsDir() {
+                        return filepath.SkipDir
+                    }
+                    return nil
+                }
+            }
+            if err != nil {
+                log.Printf("%s: %s", path, err)
+                return nil
+            }
+            if info != nil && info.Mode()&os.ModeType == 0 {
+                ix.AddFile(path)
+            }
+            return nil
+        })
+    }
+    log.Printf("flush index")
+    ix.Flush()
 
-	if !*resetFlag {
-		log.Printf("merge %s %s", master, file)
-		index.Merge(file+"~", master, file)
-		os.Remove(file)
-		os.Rename(file+"~", master)
-	}
-	log.Printf("done")
-	return
+    if !*resetFlag {
+        log.Printf("merge %s %s", master, file)
+        index.Merge(file+"~", master, file)
+        os.Remove(file)
+        os.Rename(file+"~", master)
+    }
+    log.Printf("done")
+    return
 }

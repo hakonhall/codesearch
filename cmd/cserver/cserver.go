@@ -907,6 +907,10 @@ func ShowFile(writer http.ResponseWriter, request *http.Request,
 	PrintFileHeader(writer, path)
 	i := 1
 	scanner := bufio.NewScanner(file)
+	// Got this error with a 68kB line: bufio.Scanner: token too long
+	const maxCapacity = 1024*1024  // 1 MB
+	buf := make([]byte, maxCapacity)
+	scanner.Buffer(buf, maxCapacity)
 	for scanner.Scan() {
 		if PrintFileLine(writer, scanner.Text(), i, re) {
 			if i == lineno {

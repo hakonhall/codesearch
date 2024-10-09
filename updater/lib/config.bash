@@ -217,7 +217,7 @@ ReadConfig() {
                 test "$server" != "" ||
                     Fail "$loc: $key assignment outside server section"
                 # TODO: This is missing '.' and + !?
-                [[ "$value" =~ ^'https://'([a-zA-Z0-9_]+@)$DNS_RE0(:[0-9]+)?($|/) ]] ||
+                [[ "$value" =~ ^'https://'([a-zA-Z0-9_]+@)?$DNS_RE0(:[0-9]+)?($|/) ]] ||
                     Fail "$loc: Invalid HTTPS URL: $value"
                 GITHUB_API_URLS["$server"]="$value"
                 ;;

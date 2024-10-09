@@ -61,6 +61,7 @@ var (
 	listFlag    = flag.Bool("list", false, "list indexed paths and exit")
 	resetFlag   = flag.Bool("reset", false, "discard existing index")
 	verboseFlag = flag.Bool("verbose", false, "print extra information")
+	logSkipFlag = flag.Bool("log", false, "print extra information")
 	cpuProfile  = flag.String("cpuprofile", "", "write cpu profile to this file")
 	forceFlag   = flag.Bool("force", false, "force addition to index")
 )

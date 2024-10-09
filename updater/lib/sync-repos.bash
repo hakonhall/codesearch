@@ -65,6 +65,12 @@ function SyncRepos {
             rm -rf "$dir"
         fi
 
+        if [ -d "$dir" ] && ! [ -s "$dir"/.git/index ]
+        then
+            Log "corrupt $dir/.git/index"
+            rm -rf "$dir"
+        fi
+
         if [ -d "$dir" ]
         then
             Log "updating $dir"

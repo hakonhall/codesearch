@@ -128,6 +128,6 @@ function _UpdateIndex {
 
     rm -f "$index".new
     Log "updating code search index"
-    "$cindex" -index "$index".new "$git_dir"/* &> /dev/null
+    CSEARCHINDEX="$index".new "$cindex" "$git_dir"/* &> /dev/null
     mv "$index".new "$index"
 }

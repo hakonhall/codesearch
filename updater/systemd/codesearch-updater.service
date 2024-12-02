@@ -2,7 +2,7 @@
 Description=Codesearch index updater
 
 [Service]
-ExecStart=/home/hakon/codesearch/codesearch/updater/bin/updater -c /home/hakon/codesearch/config
+ExecStart=/home/hakon/var/codesearch/codesearch/updater/bin/updater -c /home/hakon/var/codesearch/config
 Restart=always
 RestartSec=60
 

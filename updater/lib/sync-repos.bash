@@ -76,15 +76,15 @@ function SyncRepos {
             Log "updating $dir"
             pushd "$dir" > /dev/null
             if (( ${#ref} == 0 )); then
-                git pull --rebase > /dev/null
+                _Git "$server" pull --rebase > /dev/null
             elif [[ "$ref" =~ ^[0-9a-f]{40}$ ]]
             then
-                git fetch -q
+                _Git "$server" fetch -q
                 # Set 'git config advice.detachedHead false' to reduce noise
                 # Allow non-existing references(!)
                 git checkout -q "$ref" || true
             else
-                git fetch -q
+                _Git "$server" fetch -q
                 git checkout -q "$ref"
                 git rebase -q
             fi
@@ -121,7 +121,7 @@ function SyncRepos {
             fi
 
             Log "cloning to $dir"
-            git clone -q "$url" "$dir"
+            _Git "$server" clone -q "$url" "$dir"
             # Set 'git config advice.detachedHead false' to reduce noise
             # Allow non-existing refs(!)
             (( ${#ref} == 0 )) || git -C "$dir" checkout -q "$ref" || true
@@ -151,4 +151,25 @@ function SyncRepos {
     fi
 
     cd "$savedPwd"
+}
+
+_Git() {
+    local server="$1"
+    shift
+
+    local token="${GITHUB_TOKENS[$server]}"
+    local url="${GITHUB_URLS[$server]}"
+    if test "$token" != "" && [[ "$url" == https://* ]]; then
+        #  - See git-config(1) for these environment variables.
+        #  - GitHub's git endpoint rejects "Bearer TOKEN" (401, verified
+        #    2026-10-22), but accepts basic auth with the token as password.
+        local basic
+        basic=$(printf 'x-access-token:%s' "$token" | base64 -w0)
+        GIT_CONFIG_COUNT=1 \
+        GIT_CONFIG_KEY_0="http.$url/.extraHeader" \
+        GIT_CONFIG_VALUE_0="Authorization: Basic $basic" \
+        git "$@"
+    else
+        git "$@"
+    fi
 }

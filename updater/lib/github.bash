@@ -70,13 +70,11 @@ _CurlGitHub() {
 
     local -a auth=()
     if test "$token" != ""; then
-        auth+=(-H "Authorization: token $token")
+        auth+=(-H "Authorization: Bearer $token")
     fi
 
-    local -a args=(-s -f
-                   "${auth[@]}"
-                   -H "Accept: application/vnd.github.v3+json"
-                   "$url")
-    
-    Capture curl "${args[@]}"
- }
+    Capture curl -s -f \
+            -H "Accept: application/vnd.github.v3+json" \
+            "${auth[@]}" \
+            "$url"
+}
